@@ -1,0 +1,48 @@
+:root {
+  color-scheme: dark;
+
+  --joyo-night: #0D0E24;
+  --joyo-surface: #171936;
+  --joyo-surface-2: #1F2244;
+  --joyo-line: #2C2F57;
+  --joyo-ivory: #F3EBDD;
+  --joyo-lavender: #9A93B8;
+
+  --joyo-gold: #E8C26A;
+  --joyo-gold-hover: #F2D488;
+  --joyo-gold-soft: rgba(232, 194, 106, 0.18);
+  --joyo-on-gold: #1A1530;
+
+  /* Mood scale: Resting (1) to Active (8). Data only. */
+  --joyo-scale-1: #2E2F5E;
+  --joyo-scale-2: #5A3A6E;
+  --joyo-scale-3: #8A3558;
+  --joyo-scale-4: #C4527A;
+  --joyo-scale-5: #DE7E6E;
+  --joyo-scale-6: #E4A55C;
+  --joyo-scale-7: #E8C26A;
+  --joyo-scale-8: #F2DC9A;
+
+  --joyo-error: #E89A8A;
+
+  --joyo-font-display: "Marcellus", "Cormorant Garamond", Georgia, serif;
+  --joyo-font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --joyo-font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --joyo-radius-card: 14px;
+  --joyo-radius-input: 10px;
+  --joyo-radius-pill: 999px;
+
+  --joyo-space-1: 4px;
+  --joyo-space-2: 8px;
+  --joyo-space-3: 12px;
+  --joyo-space-4: 16px;
+  --joyo-space-5: 24px;
+  --joyo-space-6: 32px;
+  --joyo-space-7: 48px;
+
+  --joyo-ease: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --joyo-dur-fast: 150ms;
+  --joyo-dur: 300ms;
+  --joyo-dur-slow: 600ms;
+}
