@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { OnboardingResult } from '@/onboarding/schema'
+import { loadBirthRecord, RECORD_SOURCES, saveBirthRecord, type BirthRecord } from './birth'
+import BirthCard from './BirthCard.vue'
 import LifeTimeline from './LifeTimeline.vue'
 import { loadAddedMilestones, saveAddedMilestones, type AddedMilestone } from './milestones'
 import {
@@ -24,29 +26,35 @@ const props = defineProps<{ result: OnboardingResult; now?: Date }>()
 const FORECAST_YEARS = 12
 const SPEEDS = [2, 5, 10]
 
-const birth = birthMs(props.result.birth.date)
-const today = Math.round(((props.now ?? new Date()).getTime() - birth) / DAY_MS)
-const span = today + Math.round(FORECAST_YEARS * 365.25)
-const model = seasonModel(`${props.result.birth.date}|${props.result.estimate.bestGuess}`)
-const fromOnboarding = milestonesFrom(props.result)
+const { estimate } = props.result
+
+// A birth time found written down replaces the estimate, and everything is measured from it.
+const record = ref<BirthRecord | null>(loadBirthRecord(props.result.completedAt))
+const birthDate = computed(() => record.value?.date ?? props.result.birth.date)
+const birthTime = computed(() => record.value?.time ?? estimate.bestGuess)
+const birth = computed(() => birthMs(birthDate.value))
+const today = computed(() => Math.round(((props.now ?? new Date()).getTime() - birth.value) / DAY_MS))
+const span = computed(() => today.value + Math.round(FORECAST_YEARS * 365.25))
+const model = computed(() => seasonModel(`${birthDate.value}|${birthTime.value}`))
 
 const added = ref<AddedMilestone[]>(loadAddedMilestones(props.result.completedAt))
 const milestones = computed<Milestone[]>(() => [
-  ...fromOnboarding,
-  ...added.value.map(({ id, name, date, house }) => ({
-    id,
-    name,
-    house,
-    t: Math.round(((eventMs(date) ?? birth) - birth) / DAY_MS),
-  })),
+  ...milestonesFrom(estimate.events, birthDate.value),
+  ...added.value.flatMap(({ id, name, date, house }) => {
+    const t = Math.round(((eventMs(date) ?? birth.value) - birth.value) / DAY_MS)
+    return t < 0 ? [] : [{ id, name, house, t }]
+  }),
 ])
 
-const t = ref(today)
-const scores = computed(() => model.scores(t.value, milestones.value))
+const t = ref(today.value)
+// Keep the playhead on the same calendar day when the birth date changes.
+watch(birth, (next, previous) => (t.value = Math.max(0, t.value + Math.round((previous - next) / DAY_MS))))
+
+const scores = computed(() => model.value.scores(t.value, milestones.value))
 const lit = computed(() => litMilestone(t.value, milestones.value))
 const age = computed(() => Math.max(0, Math.floor(t.value / 365.25)))
 const place = props.result.birth.place.split(',')[0]
-const { estimate } = props.result
+const at = (days: number) => birth.value + days * DAY_MS
 
 // Playback through life.
 const playing = ref(false)
@@ -55,16 +63,16 @@ let frame = 0
 let last = 0
 
 function step(time: number) {
-  t.value = Math.min(span, t.value + ((time - last) / 1000) * speed.value * 365.25)
+  t.value = Math.min(span.value, t.value + ((time - last) / 1000) * speed.value * 365.25)
   last = time
-  if (t.value >= span) playing.value = false
+  if (t.value >= span.value) playing.value = false
   else frame = requestAnimationFrame(step)
 }
 
 watch(playing, (on) => {
   cancelAnimationFrame(frame)
   if (!on) return
-  if (t.value >= span) t.value = 0
+  if (t.value >= span.value) t.value = 0
   last = performance.now()
   frame = requestAnimationFrame(step)
 })
@@ -101,7 +109,7 @@ function add() {
     return
   }
   const at = eventMs(parsed.date)!
-  if (at < birth) {
+  if (at < birth.value) {
     hint.value = 'That date is before you were born. Check the year.'
     return
   }
@@ -110,7 +118,13 @@ function add() {
   saveAddedMilestones(props.result.completedAt, added.value)
   draft.value = ''
   hint.value = `Added · ${formatMonth(at)} → ${houseAction(parsed.house)}`
-  jumpTo(Math.round((at - birth) / DAY_MS))
+  jumpTo(Math.round((at - birth.value) / DAY_MS))
+  flash.value++
+}
+
+function setRecord(next: BirthRecord | null) {
+  record.value = next
+  saveBirthRecord(props.result.completedAt, next)
   flash.value++
 }
 
@@ -155,7 +169,10 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
       <h1>Season Wheel</h1>
       <p class="person">
         Born <b>{{ formatDay(birth) }}</b> · <b>{{ place }}</b> ·
-        <b class="mono">~{{ estimate.bestGuess }}</b> (estimated)
+        <template v-if="record">
+          <b class="mono">{{ record.time }}</b> ({{ RECORD_SOURCES[record.source] }})
+        </template>
+        <template v-else><b class="mono">{{ estimate.earliest }}–{{ estimate.latest }}</b> (estimated)</template>
       </p>
     </header>
 
@@ -164,9 +181,9 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
         <WheelCanvas
           :scores="scores"
           :lit="lit ? lit.house - 1 : -1"
-          :title="formatMonth(birth + t * DAY_MS)"
+          :title="formatMonth(at(t))"
           :subtitle="t > today + 15 ? `Age ${age} · forecast` : `Age ${age}`"
-          :detail="`born ~${estimate.bestGuess}`"
+          :detail="record ? `born ${record.time}` : `born ~${estimate.bestGuess}`"
           :flash="flash"
         />
         <p class="toast" aria-live="polite">{{ announcement }}</p>
@@ -185,7 +202,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
               </svg>
             </button>
             <p class="date">
-              {{ formatDay(birth + t * DAY_MS) }}<small v-if="t > today + 15">forecast</small>
+              {{ formatDay(at(t)) }}<small v-if="t > today + 15">forecast</small>
             </p>
             <div class="speed" role="group" aria-label="Playback speed">
               <button
@@ -207,13 +224,22 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             :max="span"
             step="1"
             aria-label="Date in your life"
-            :aria-valuetext="formatDay(birth + t * DAY_MS)"
+            :aria-valuetext="formatDay(at(t))"
             @input="playing = false"
           />
         </section>
       </div>
 
       <section class="panel" aria-labelledby="story-heading">
+        <BirthCard
+          :date="result.birth.date"
+          :estimate="estimate"
+          :record="record"
+          @save="setRecord"
+          @clear="setRecord(null)"
+          @jump="jumpTo(0)"
+        />
+
         <div>
           <h2 id="story-heading">Add to your story</h2>
           <p>Type or say a milestone and roughly when it happened. Month and year is enough.</p>
@@ -257,7 +283,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             >
               <button type="button" class="jump" @click="jumpTo(milestone.t)">
                 <b>{{ milestone.name }}<span v-if="milestone.id" class="new"> · added</span></b>
-                <span>{{ formatMonth(birth + milestone.t * DAY_MS) }} → {{ houseAction(milestone.house) }}</span>
+                <span>{{ formatMonth(at(milestone.t)) }} → {{ houseAction(milestone.house) }}</span>
               </button>
               <button
                 v-if="milestone.id"
@@ -272,18 +298,11 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             <li v-if="!sortedMilestones.length" class="empty">No dated moments yet. Add one above.</li>
           </ul>
         </div>
-
-        <div class="born">
-          <span class="label">Born</span>
-          <span class="time mono">~{{ estimate.bestGuess }}</span>
-          <span class="meta"><span class="mono">{{ estimate.earliest }}–{{ estimate.latest }}</span> · {{ estimate.confidence }} confidence</span>
-        </div>
-        <p class="small">This is a best fit to the events you gave, not a certainty.</p>
       </section>
     </div>
 
     <p class="note">
-      Season colours are an early preview built from your milestones. Milestones you add here are saved on this device.
+      Season colours are an early preview built from your milestones. Milestones and birth times you add here are saved on this device.
     </p>
   </div>
 </template>
@@ -686,29 +705,6 @@ input[type='range']::-moz-range-thumb {
 .empty {
   padding: 6px 0;
   font-size: 13px;
-  color: var(--joyo-lavender);
-}
-
-.born {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--joyo-space-1) 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--joyo-line);
-}
-
-.born .label {
-  margin: 0;
-}
-
-.time {
-  font-size: 18px;
-}
-
-.meta,
-.panel .small {
-  font-size: 12.5px;
   color: var(--joyo-lavender);
 }
 

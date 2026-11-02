@@ -40,9 +40,10 @@ const mountWheel = () => mount(SeasonWheel, { props: { result, now: new Date('20
 describe('SeasonWheel', () => {
   it('shows the birth details, the estimate and the milestones from onboarding', () => {
     const wrapper = mountWheel()
-    expect(wrapper.text()).toContain('Born 12 Apr 1990 · Testville')
-    expect(wrapper.text()).toContain('07:30–09:30 · medium confidence')
-    expect(wrapper.text()).toContain('not a certainty')
+    expect(wrapper.find('.person').text()).toContain('Born 12 Apr 1990 · Testville · 07:30–09:30 (estimated)')
+    expect(wrapper.find('.birth').text()).toContain('12 Apr 199007:30–09:30')
+    expect(wrapper.find('.birth').text()).toContain('Estimated from your milestones · medium confidence')
+    expect(wrapper.find('.birth').text()).toContain('not a certainty')
     expect(wrapper.find('.milestones').text()).toContain('Married')
     expect(wrapper.find('.milestones').text()).toContain('Jun 2015 → Partner')
   })
@@ -80,6 +81,34 @@ describe('SeasonWheel', () => {
     const wrapper = mountWheel()
     await wrapper.find('[aria-label="Remove Moved abroad"]').trigger('click')
     expect(wrapper.find('.milestones').text()).not.toContain('Moved abroad')
+    expect(items.size).toBe(0)
+  })
+
+  it('uses a birth time found written down instead of the estimate', async () => {
+    const wrapper = mountWheel()
+    await wrapper.find('.birth .link').trigger('click')
+    await wrapper.find('.birth input[type="date"]').setValue('1990-04-11')
+    await wrapper.find('.birth input[type="time"]').setValue('05:50')
+    await wrapper.findAll('.birth .chip')[0]!.trigger('click')
+    await wrapper.find('.birth form').trigger('submit')
+
+    expect(wrapper.find('.person').text()).toContain('Born 11 Apr 1990 · Testville · 05:50 (birth certificate)')
+    expect(wrapper.find('.birth').text()).toContain('From your birth certificate')
+    expect(wrapper.find('.birth').text()).toContain('Your milestones pointed to 07:30–09:30')
+    expect(wrapper.find('.birth').text()).not.toContain('not a certainty')
+    expect(JSON.parse(items.get(`joyo:birth-record:${result.completedAt}`)!)).toEqual({
+      date: '1990-04-11',
+      time: '05:50',
+      source: 'certificate',
+    })
+  })
+
+  it('asks where the time is written before using it', async () => {
+    const wrapper = mountWheel()
+    await wrapper.find('.birth .link').trigger('click')
+    await wrapper.find('.birth input[type="time"]').setValue('05:50')
+    await wrapper.find('.birth form').trigger('submit')
+    expect(wrapper.find('.birth [role="alert"]').text()).toContain('Pick where the time is written down.')
     expect(items.size).toBe(0)
   })
 })

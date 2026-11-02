@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import type { OnboardingResult } from '@/onboarding/schema'
 import { eventMs, houseFor, litMilestone, milestonesFrom, parseMilestone, seasonModel, seasonWord } from './season'
 
 describe('houseFor', () => {
@@ -38,16 +37,11 @@ describe('parseMilestone', () => {
 
 describe('milestonesFrom', () => {
   it('turns onboarding events into days since birth, dropping ones it cannot place', () => {
-    const result = {
-      birth: { date: '1990-01-01', place: 'Testville', notes: '' },
-      estimate: {
-        events: [
-          { type: 'marriage', date: '2015-06', precision: 'month', notes: '' },
-          { type: 'first job', date: 'unknown', precision: 'year', notes: '' },
-        ],
-      },
-    } as unknown as OnboardingResult
-    expect(milestonesFrom(result)).toEqual([{ name: 'Marriage', t: 9296, house: 7 }])
+    const events = [
+      { type: 'marriage', date: '2015-06', precision: 'month' as const, notes: '' },
+      { type: 'first job', date: 'unknown', precision: 'year' as const, notes: '' },
+    ]
+    expect(milestonesFrom(events, '1990-01-01')).toEqual([{ name: 'Marriage', t: 9296, house: 7 }])
   })
 })
 

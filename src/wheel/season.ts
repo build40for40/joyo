@@ -1,4 +1,4 @@
-import type { OnboardingResult } from '@/onboarding/schema'
+import type { Estimate } from '@/onboarding/schema'
 
 /** The 12 fixed houses, house 1 first. Labels describe actions, never outcomes. */
 export const HOUSES = [
@@ -66,9 +66,10 @@ export function eventMs(date: string): number | null {
   return Date.UTC(Number(year), +month - 1, day ? +day : 15)
 }
 
-export function milestonesFrom(result: OnboardingResult): Milestone[] {
-  const birth = birthMs(result.birth.date)
-  return result.estimate.events.flatMap((event) => {
+/** Onboarding events as milestones, measured from the birth date. Events before it are left out. */
+export function milestonesFrom(events: Estimate['events'], birthDate: string): Milestone[] {
+  const birth = birthMs(birthDate)
+  return events.flatMap((event) => {
     const at = eventMs(event.date)
     if (at === null || at < birth) return []
     return [{ name: capitalise(event.type), t: Math.round((at - birth) / DAY_MS), house: houseFor(event.type) }]

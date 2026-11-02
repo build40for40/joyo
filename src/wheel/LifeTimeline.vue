@@ -119,6 +119,12 @@ onBeforeUnmount(() => resize?.disconnect())
         </text>
       </g>
 
+      <g class="birth-mark">
+        <circle :cx="x(0)" :cy="AXIS" r="5" />
+        <text :x="x(0)" :y="AXIS + 18">Born</text>
+        <title>Born · {{ formatMonth(birth) }}</title>
+      </g>
+
       <line class="today" :x1="x(today)" :x2="x(today)" y1="2" :y2="HEIGHT" />
       <text class="today-label" :x="x(today) + 6" :y="HEIGHT - 4">TODAY</text>
 
@@ -195,6 +201,17 @@ onBeforeUnmount(() => resize?.disconnect())
 
 .lit .label {
   fill: var(--joyo-scale-8);
+}
+
+.birth-mark circle {
+  fill: var(--joyo-night);
+  stroke: var(--joyo-gold);
+  stroke-width: 1.5;
+}
+
+.birth-mark text {
+  font-size: 11px;
+  fill: var(--joyo-gold);
 }
 
 .playhead {
