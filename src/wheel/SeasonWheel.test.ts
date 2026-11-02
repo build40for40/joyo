@@ -152,4 +152,13 @@ describe('SeasonWheel', () => {
     expect(wrapper.find('.date').text()).toBe('2 Nov 2026')
     expect(wrapper.find('.today-link').attributes('aria-pressed')).toBe('true')
   })
+
+  it('opens the birth form from the link at the top', async () => {
+    const wrapper = mountWheel()
+    expect(wrapper.find('.birth form').exists()).toBe(false)
+    await wrapper.find('.update-birth').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.birth form').exists()).toBe(true)
+    expect((wrapper.find('.birth input[type="date"]').element as HTMLInputElement).value).toBe('1990-04-12')
+  })
 })

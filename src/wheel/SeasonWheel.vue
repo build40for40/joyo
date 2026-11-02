@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import type { OnboardingResult } from '@/onboarding/schema'
 import { loadBirthRecord, RECORD_SOURCES, saveBirthRecord, type BirthRecord } from './birth'
@@ -31,6 +31,7 @@ const SPEEDS = { life: [2, 5, 10], ahead: [0.5, 1, 2] }
 const AHEAD_YEARS = 5
 
 const { estimate } = props.result
+const birthCard = useTemplateRef<InstanceType<typeof BirthCard>>('birthCard')
 
 // A birth time found written down replaces the estimate, and everything is measured from it.
 const record = ref<BirthRecord | null>(loadBirthRecord(props.result.completedAt))
@@ -197,6 +198,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
           <b class="mono">{{ record.time }}</b> ({{ RECORD_SOURCES[record.source] }})
         </template>
         <template v-else><b class="mono">{{ estimate.earliest }}–{{ estimate.latest }}</b> (estimated)</template>
+        <button type="button" class="update-birth" @click="birthCard?.edit()">Update my birthday or time?</button>
       </p>
     </header>
 
@@ -364,6 +366,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
         </div>
 
         <BirthCard
+          ref="birthCard"
           :date="result.birth.date"
           :estimate="estimate"
           :record="record"
@@ -398,6 +401,27 @@ header {
   margin: 0;
   font-size: 14px;
   color: var(--joyo-lavender);
+}
+
+.update-birth {
+  min-height: 32px;
+  margin-left: var(--joyo-space-2);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--joyo-lavender);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--joyo-line);
+  text-underline-offset: 3px;
+}
+
+.update-birth:hover {
+  border: 0;
+  color: var(--joyo-gold);
+  text-decoration-color: var(--joyo-gold);
 }
 
 .person b {
