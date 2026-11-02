@@ -10,7 +10,7 @@ vi.mock('./auth', () => ({
   getAuth: async () => ({ getUser: () => auth.user, getAccessToken: async () => 'token', signIn: auth.signIn }),
 }))
 
-const birth = { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, time: null, timeSource: null, notes: '' }
+const birth = { date: '1990-04-12', place: 'Testville, Exampleland', location: null, timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, time: null, timeSource: null, notes: '' }
 
 const result: OnboardingResult = {
   birth,
@@ -123,10 +123,12 @@ describe('OnboardingFlow', () => {
   it('shows stars, not the streaming text, until the next question is ready', async () => {
     setUp({ signedIn: true, draft: { birth, steps: [] } })
     const question = { text: 'Is there a birth certificate?', hint: null, input: 'choice', options: ['Yes', 'No'] }
-    const turn = new TextEncoder().encode(JSON.stringify({ question, estimate: null }))
+    const turn = new TextEncoder().encode(JSON.stringify({ note: null, question, estimate: null }))
     let finish = () => {}
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (String(url).endsWith('/result')) return new Response('Not found', { status: 404 })
+      // Scoring is optional: without it the questions carry on.
+      if (String(url).endsWith('/progress')) return new Response('Unavailable', { status: 503 })
       const body = new ReadableStream({
         start(controller) {
           controller.enqueue(turn.slice(0, 30))
@@ -139,6 +141,8 @@ describe('OnboardingFlow', () => {
       return new Response(body)
     })
     const wrapper = await mountFlow()
+    // The scoring call comes first, so let the question request start before releasing its stream.
+    await flushPromises()
     expect(wrapper.find('.loading-stars').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Is there a')
 

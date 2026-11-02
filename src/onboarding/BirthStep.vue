@@ -10,6 +10,7 @@ type Knowledge = 'exact' | 'rough' | 'none'
 const birth = reactive<Birth>({
   date: '',
   place: '',
+  location: null,
   timeOfDay: 'unknown',
   sureness: 'not_sure',
   time: null,
@@ -67,6 +68,7 @@ function details(): Birth {
     return {
       date,
       place,
+      location: null,
       notes,
       time: exactTime.value,
       timeSource: birth.timeSource,
@@ -75,7 +77,7 @@ function details(): Birth {
     }
   }
   if (knows.value === 'rough') return { ...birth, time: null, timeSource: null }
-  return { date, place, notes, timeOfDay: 'unknown', sureness: 'not_sure', time: null, timeSource: null }
+  return { date, place, location: null, notes, timeOfDay: 'unknown', sureness: 'not_sure', time: null, timeSource: null }
 }
 </script>
 

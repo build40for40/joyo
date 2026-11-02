@@ -1,13 +1,15 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createTextStreamResponse, generateText, Output, streamText, toTextStream } from 'ai'
 
-import { extractionSchema, finalTurnSchema, historySchema, turnSchema } from '../src/onboarding/schema'
+import { extractionSchema, finalTurnSchema, turnRequestSchema, turnSchema, type LifeEvent, type TurnRequest } from '../src/onboarding/schema'
 import { workosClientId } from '../src/onboarding/workos'
 import { authenticate, workosIssuer, workosKeys } from './auth'
-import { checkUpload, EXTRACT_INSTRUCTIONS, toExtractMessages } from './extract'
+import { ANSWER_EVENTS_INSTRUCTIONS, checkUpload, EXTRACT_INSTRUCTIONS, toAnswerMessages, toExtractMessages } from './extract'
+import { searchPlaces } from './geocode'
 import { isLastTurn, LAST_TURN_INSTRUCTION, toModelMessages } from './messages'
 import onboardingPrompt from './onboarding-prompt.md'
 import { resultKey, saveResult } from './results'
+import { finalWindow, mergeEvents, movement, resolveLocation, scoreEvents, scoringSummary } from './turn'
 
 interface Env {
   RESULTS: KVNamespace
@@ -18,7 +20,8 @@ interface Env {
 
 const API = '/joyo/api/onboarding'
 const MODEL = 'claude-sonnet-5-5'
-const MAX_BODY_LENGTH = 64_000
+const MAX_BODY_LENGTH = 96_000
+const NO_PLACE = "We couldn't find that birthplace. Try the town and country, like Leeds, UK."
 
 export default {
   async fetch(request, env, ctx) {
@@ -27,6 +30,7 @@ export default {
     const userId = await authenticate(request, workosKeys(clientId), workosIssuer(clientId))
     if (!userId) return new Response('Sign in to continue.', { status: 401 })
 
+    if (request.method === 'POST' && pathname === `${API}/progress`) return progress(request, env)
     if (request.method === 'POST' && pathname === `${API}/next`) return next(request, env, ctx, userId)
     if (request.method === 'POST' && pathname === `${API}/extract`) return extract(request, env)
     if (request.method === 'GET' && pathname === `${API}/result`) return getResult(env, userId)
@@ -40,19 +44,64 @@ async function getResult(env: Env, userId: string) {
   return new Response(result, { headers: { 'Content-Type': 'application/json' } })
 }
 
-async function next(request: Request, env: Env, ctx: ExecutionContext, userId: string) {
+async function readTurn(request: Request): Promise<TurnRequest | Response> {
   const body = await request.text()
   if (body.length > MAX_BODY_LENGTH) return new Response('That is too much to send at once.', { status: 413 })
-
-  const parsed = historySchema.safeParse(parseJson(body))
+  const parsed = turnRequestSchema.safeParse(parseJson(body))
   if (!parsed.success) return new Response('Those answers could not be read.', { status: 400 })
-  const history = parsed.data
-  const lastTurn = isLastTurn(history)
+  return parsed.data
+}
+
+/**
+ * After each answer: read any new dated events from it, then score the whole day before and after,
+ * so the screen can show where the estimate stands and what the answer did.
+ */
+async function progress(request: Request, env: Env) {
+  const turn = await readTurn(request)
+  if (turn instanceof Response) return turn
+  const location = await resolveLocation(turn, (q) => searchPlaces(q, env.RESULTS)).catch(() => null)
+  if (!location) return new Response(NO_PLACE, { status: 422 })
+
+  let found: LifeEvent[] = []
+  if (turn.steps[turn.steps.length - 1]?.answer) {
+    try {
+      const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
+      const { output } = await generateText({
+        model: anthropic(MODEL),
+        instructions: ANSWER_EVENTS_INSTRUCTIONS,
+        messages: toAnswerMessages(turn),
+        output: Output.object({ schema: extractionSchema, name: 'events' }),
+        providerOptions: { anthropic: { effort: 'low', fallbacks: 'default' } },
+      })
+      found = output.events
+    } catch (error) {
+      // The default error carries the request, which holds the answers.
+      console.error('Reading events from an answer failed:', errorName(error))
+    }
+  }
+
+  const events = mergeEvents(turn.events, found)
+  const before = turn.events.length ? scoreEvents(turn, location, turn.events) : null
+  const after = scoreEvents(turn, location, events)
+  return Response.json({ location, events, score: after, moved: movement(before, after) })
+}
+
+async function next(request: Request, env: Env, ctx: ExecutionContext, userId: string) {
+  const turn = await readTurn(request)
+  if (turn instanceof Response) return turn
+  const lastTurn = turn.finish || isLastTurn(turn)
+  const location = await resolveLocation(turn, (q) => searchPlaces(q, env.RESULTS)).catch(() => null)
+
+  // With a birthplace, the model gets the scoring to explain. Without one it can still ask questions.
+  const score = location ? scoreEvents(turn, location, turn.events) : null
+  const summary = score && location ? scoringSummary(score, turn.events, location) : ''
+  const instructions = [onboardingPrompt, summary, lastTurn ? LAST_TURN_INSTRUCTION : ''].filter(Boolean).join('\n\n')
 
   const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
+  const history = { birth: { ...turn.birth, location }, steps: turn.steps }
   const result = streamText({
     model: anthropic(MODEL),
-    instructions: lastTurn ? `${onboardingPrompt}\n\n${LAST_TURN_INSTRUCTION}` : onboardingPrompt,
+    instructions,
     messages: toModelMessages(history),
     output: Output.object({ schema: lastTurn ? finalTurnSchema : turnSchema, name: 'turn' }),
     providerOptions: {
@@ -62,8 +111,14 @@ async function next(request: Request, env: Env, ctx: ExecutionContext, userId: s
     onError: ({ error }) => console.error('Onboarding turn failed:', errorName(error)),
     onEnd: ({ output }) => {
       if (!output?.estimate) return
+      // The window and confidence come from the scoring, whatever the model wrote, unless the user gave
+      // a written-down time: then the model's estimate around it stands.
+      const written = turn.birth.time && turn.birth.timeSource !== 'memory'
+      const estimate = score && !written
+        ? { ...output.estimate, ...finalWindow(score), events: turn.events.length ? turn.events : output.estimate.events }
+        : output.estimate
       ctx.waitUntil(
-        saveResult(env.RESULTS, userId, history, output.estimate, new Date()).catch((error: unknown) =>
+        saveResult(env.RESULTS, userId, history, estimate, new Date(), score ?? undefined).catch((error: unknown) =>
           console.error('Onboarding result was not saved:', errorName(error)),
         ),
       )

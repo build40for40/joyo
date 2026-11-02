@@ -3,6 +3,7 @@
  * src/rectification/system-prompt.md. A port of tools/rectification-test/rectify.py, tested against
  * its scores in scoring-reference.json. The model never does any of this: it only explains the result.
  */
+import { EVENT_ABOUT, EVENT_KINDS, MONTH_DATED_NEEDED } from '../../src/onboarding/schema'
 import { localDay, localToUtc, utcToLocal } from './time'
 import {
   ascendant,
@@ -19,35 +20,8 @@ import {
   type Varga,
 } from './vedic'
 
-export const EVENT_KINDS = [
-  'relationship_start',
-  'marriage',
-  'relationship_end',
-  'child_born',
-  'job_start',
-  'job_end',
-  'study_start',
-  'study_end',
-  'school_change',
-  'home_move',
-  'property',
-  'move_abroad',
-  'own_health',
-  'money',
-  'spiritual',
-  'media',
-  'parent_health',
-  'parent_death',
-  'parent_money',
-  'sibling_born',
-  'sibling_married',
-  'sibling_child',
-  'grandparent_death',
-  'other',
-] as const
+export { EVENT_ABOUT, EVENT_KINDS }
 export type EventKind = (typeof EVENT_KINDS)[number]
-
-export const EVENT_ABOUT = ['self', 'father', 'mother', 'sibling', 'grandparent', 'other'] as const
 export type EventAbout = (typeof EVENT_ABOUT)[number]
 
 export interface ScoringEvent {
@@ -311,7 +285,7 @@ export function evidenceLevel({ exact, month, usable, spreadYears }: ReturnType<
 
 /** A clear leader beats the runner-up by this share of its score. */
 export const CLEAR_MARGIN = 0.08
-export const MONTH_DATED_NEEDED = 6
+export { MONTH_DATED_NEEDED }
 
 export interface ScoringInput {
   date: string
@@ -353,6 +327,70 @@ export interface DayScore {
   likelihood: { time: string; score: number }[]
   /** Why each event does or doesn't fit the leading time. */
   notes: EventNote[]
+  /** Periods where the two leading times expect different things, to ask about. Newest first. */
+  disagreements: Disagreement[]
+}
+
+export interface Disagreement {
+  /** YYYY-MM, local. */
+  from: string
+  to: string
+  area: string
+  /** The lagna that expects something in this area then, and the one that doesn't. */
+  expects: string
+  doesNot: string
+}
+
+/** Life areas to ask about when two times disagree, with their houses. */
+const AREAS: [string, number[]][] = [
+  ['relationships', [7]],
+  ['work', [10]],
+  ['home and family', [4]],
+  ['living abroad', [12]],
+  ['study or travel', [9]],
+  ['children', [5]],
+  ['money', [2, 11]],
+  ['health', [6, 8]],
+]
+
+/** Antardasha periods from age 16 to now, 6 months to 3 years long, from the Moon at birth. */
+function antardashas(moon: number, birthMs: number, now: number) {
+  const out: { start: number; end: number; lord: Graha }[] = []
+  const first = Math.floor(moon / NAKSHATRA) % 9
+  let t = birthMs - ((moon % NAKSHATRA) / NAKSHATRA) * DASHA_YEARS[DASHA_ORDER[first]!]! * YEAR_MS
+  for (let k = 0; k < 18 && t < now; k++) {
+    const mdIndex = (first + k) % 9
+    const mdYears = DASHA_YEARS[DASHA_ORDER[mdIndex]!]!
+    for (let j = 0; j < 9; j++) {
+      const lord = DASHA_ORDER[(mdIndex + j) % 9]!
+      const span = ((mdYears * DASHA_YEARS[lord]!) / 120) * YEAR_MS
+      const end = Math.min(t + span, now)
+      const days = (end - t) / 86_400_000
+      if (t >= birthMs + 16 * YEAR_MS && days >= 180 && days <= 1100) out.push({ start: t, end, lord })
+      t += span
+    }
+  }
+  return out
+}
+
+function disagreementsBetween(a: { chart: Chart; t: number; lagna: string }, b: { chart: Chart; t: number; lagna: string }, tz: string) {
+  const found: (Disagreement & { start: number })[] = []
+  const month = (ms: number) => utcToLocal(ms, tz).slice(0, 7)
+  for (const [one, other] of [[a, b], [b, a]] as const) {
+    for (const period of antardashas(one.chart.longitudes.Chandra, one.t, Date.now())) {
+      for (const [area, bhavas] of AREAS) {
+        if (link(period.lord, bhavas, one.chart, 1, [], true) && !link(period.lord, bhavas, other.chart, 1, [], true)) {
+          found.push({ start: period.start, from: month(period.start), to: month(period.end), area, expects: one.lagna, doesNot: other.lagna })
+        }
+      }
+    }
+  }
+  const seen = new Set<string>()
+  return found
+    .sort((x, y) => y.start - x.start)
+    .filter((d) => !seen.has(d.area) && seen.add(d.area))
+    .slice(0, 4)
+    .map(({ start: _, ...d }) => d)
 }
 
 const SCAN_STEP = 120_000
@@ -449,6 +487,13 @@ export function scoreDay(input: ScoringInput): DayScore {
 
   const leaderChart = leader.best.chart
   const notes = events.map((e) => noteFor(leaderChart, leader.best.t, e, transits, round(scoreEvent(leaderChart, leader.best.t, e, transits))))
+  const disagreements = runnerUp
+    ? disagreementsBetween(
+        { chart: leaderChart, t: leader.best.t, lagna: leader.span.rashi },
+        { chart: runnerUp.best.chart, t: runnerUp.best.t, lagna: runnerUp.span.rashi },
+        place.tz,
+      )
+    : []
 
   return {
     level,
@@ -463,6 +508,7 @@ export function scoreDay(input: ScoringInput): DayScore {
     dependsOnHint,
     likelihood,
     notes,
+    disagreements,
   }
 }
 

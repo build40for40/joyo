@@ -146,10 +146,10 @@ export function fakeApi(): Plugin {
           const history = JSON.parse(await readBody(req)) as FakeHistory
           await wait(400)
           const question = questionsFor(history)[history.steps.length]
-          if (question) return streamJson(res, { question, estimate: null })
+          if (question) return streamJson(res, { note: null, question, estimate: null })
           const result = estimate(history)
           saved = JSON.stringify({ ...history, estimate: result, completedAt: new Date().toISOString() })
-          return streamJson(res, { question: null, estimate: result })
+          return streamJson(res, { note: null, question: null, estimate: result })
         }
 
         if (req.method === 'POST' && path === `${API}/extract`) {
