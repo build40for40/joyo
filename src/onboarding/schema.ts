@@ -8,6 +8,7 @@ export const UPLOAD_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'imag
 
 export const TIMES_OF_DAY = ['morning', 'afternoon', 'evening', 'night', 'unknown'] as const
 export const SURENESS = ['sure', 'fairly_sure', 'not_sure'] as const
+export const TIME_SOURCES = ['certificate', 'hospital', 'kundli', 'diary', 'memory'] as const
 
 export const birthSchema = z.object({
   date: z.iso.date(),
@@ -15,6 +16,13 @@ export const birthSchema = z.object({
   /** A family memory of the time is a soft hint for the rectification, never a search limit. */
   timeOfDay: z.enum(TIMES_OF_DAY).default('unknown'),
   sureness: z.enum(SURENESS).default('not_sure'),
+  /** An exact clock time, HH:MM, when the user has one. */
+  time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .nullable()
+    .default(null),
+  timeSource: z.enum(TIME_SOURCES).nullable().default(null),
   notes: z.string().trim().max(MAX_ANSWER_LENGTH),
 })
 

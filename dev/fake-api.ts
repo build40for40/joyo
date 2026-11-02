@@ -57,19 +57,53 @@ const WINDOWS: Record<string, { earliest: string; latest: string; bestGuess: str
 }
 
 interface FakeHistory {
-  birth: { timeOfDay?: string; sureness?: string }
+  birth: { timeOfDay?: string; sureness?: string; time?: string | null; timeSource?: string | null }
   steps: unknown[]
 }
 
 let saved: string | null = null
 
-function estimate({ birth }: FakeHistory) {
+/** With a recorded time, the time questions are skipped and only life events are asked about. */
+function questionsFor({ birth }: FakeHistory) {
+  const recorded = birth.time && birth.timeSource !== 'memory'
+  return recorded ? QUESTIONS.filter((question) => question.input === 'text') : QUESTIONS
+}
+
+function windowOf(time: string) {
+  const hour = Number(time.slice(0, 2))
+  return hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 18 ? 'afternoon' : 'night'
+}
+
+const clock = (minutes: number) => {
+  const wrapped = (minutes + 1440) % 1440
+  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`
+}
+
+function around(time: string, spread: number) {
+  const at = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+  return { earliest: clock(at - spread), latest: clock(at + spread), bestGuess: time }
+}
+
+function estimate(history: FakeHistory) {
+  const { birth } = history
+  if (birth.time) {
+    const recorded = birth.timeSource !== 'memory'
+    return {
+      ...around(birth.time, recorded ? 15 : 60),
+      window: windowOf(birth.time),
+      confidence: recorded ? 'high' : 'medium',
+      summary: recorded
+        ? 'A sample estimate from the local fake API, built on your recorded time. Your life events will check it in the full reading.'
+        : 'A sample estimate from the local fake API, built on the time someone remembers. The full reading will refine it.',
+      basis: [recorded ? `Your ${birth.timeSource} says ${birth.time}` : `Someone remembers ${birth.time}`],
+      events: FAKE_EVENTS,
+    }
+  }
   const hint = birth.sureness !== 'not_sure' ? WINDOWS[birth.timeOfDay ?? ''] : undefined
   const window = hint ?? { earliest: '00:00', latest: '23:59', bestGuess: '12:00' }
-  const hour = Number(window.bestGuess.slice(0, 2))
   return {
     ...window,
-    window: hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 18 ? 'afternoon' : 'night',
+    window: windowOf(window.bestGuess),
     confidence: hint && birth.sureness === 'sure' ? 'medium' : 'low',
     summary: hint
       ? 'A sample first estimate from the local fake API, built on the time of day you were told. The full reading will refine it.'
@@ -111,7 +145,7 @@ export function fakeApi(): Plugin {
         if (req.method === 'POST' && path === `${API}/next`) {
           const history = JSON.parse(await readBody(req)) as FakeHistory
           await wait(400)
-          const question = QUESTIONS[history.steps.length]
+          const question = questionsFor(history)[history.steps.length]
           if (question) return streamJson(res, { question, estimate: null })
           const result = estimate(history)
           saved = JSON.stringify({ ...history, estimate: result, completedAt: new Date().toISOString() })
