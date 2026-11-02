@@ -5,7 +5,7 @@ import type { Birth } from './schema'
 
 const emit = defineEmits<{ submit: [birth: Birth] }>()
 
-const birth = reactive<Birth>({ date: '', place: '', timeOfDay: 'unknown', sureness: 'not_sure', notes: '' })
+const birth = reactive<Birth>({ date: '', place: '', location: null, timeOfDay: 'unknown', sureness: 'not_sure', notes: '' })
 const today = new Date().toISOString().slice(0, 10)
 
 const timesOfDay: { value: Birth['timeOfDay']; label: string }[] = [

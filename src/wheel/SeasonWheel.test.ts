@@ -5,7 +5,7 @@ import type { OnboardingResult } from '@/onboarding/schema'
 import SeasonWheel from './SeasonWheel.vue'
 
 const result: OnboardingResult = {
-  birth: { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'morning', sureness: 'not_sure', notes: '' },
+  birth: { date: '1990-04-12', place: 'Testville, Exampleland', location: null, timeOfDay: 'morning', sureness: 'not_sure', notes: '' },
   steps: [],
   completedAt: '2026-11-02T09:00:00.000Z',
   estimate: {
@@ -16,7 +16,7 @@ const result: OnboardingResult = {
     confidence: 'medium',
     summary: 'A first guess.',
     basis: [],
-    events: [{ type: 'married', date: '2015-06', about: 'self', precision: 'month', confidence: 'high', notes: '' }],
+    events: [{ kind: 'marriage', type: 'married', date: '2015-06', about: 'self', precision: 'month', confidence: 'high', notes: '' }],
   },
 }
 

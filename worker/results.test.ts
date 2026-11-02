@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Estimate, History } from '../src/onboarding/schema'
 import { saveResult } from './results'
 
-const history: History = { birth: { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'evening', sureness: 'fairly_sure', notes: '' }, steps: [] }
+const history: History = { birth: { date: '1990-04-12', place: 'Testville, Exampleland', location: null, timeOfDay: 'evening', sureness: 'fairly_sure', notes: '' }, steps: [] }
 const estimate: Estimate = {
   earliest: '07:30',
   latest: '09:30',

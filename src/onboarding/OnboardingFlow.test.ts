@@ -10,7 +10,7 @@ vi.mock('./auth', () => ({
   getAuth: async () => ({ getUser: () => auth.user, getAccessToken: async () => 'token', signIn: auth.signIn }),
 }))
 
-const birth = { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, notes: '' }
+const birth = { date: '1990-04-12', place: 'Testville, Exampleland', location: null, timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, notes: '' }
 
 function setUp({ signedIn, draft, result }: { signedIn: boolean; draft?: Draft; result?: OnboardingResult }) {
   auth.user = signedIn ? { id: 'user_test' } : null

@@ -5,7 +5,7 @@ import { isLastTurn, toModelMessages } from './messages'
 
 const question: Question = { text: 'Was it light outside?', hint: null, input: 'text', options: [] }
 const history: History = {
-  birth: { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'evening', sureness: 'fairly_sure', notes: '' },
+  birth: { date: '1990-04-12', place: 'Testville, Exampleland', location: null, timeOfDay: 'evening', sureness: 'fairly_sure', notes: '' },
   steps: [
     { question, answer: 'Yes, just about' },
     { question, answer: null },

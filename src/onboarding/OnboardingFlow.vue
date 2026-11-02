@@ -2,10 +2,11 @@
 import { useObject } from '@ai-sdk/vue'
 import { computed, onMounted, ref } from 'vue'
 
-import { authedFetch, fetchResult, loadDraft, ONBOARDING_API, saveDraft, toHistory, type Draft } from './api'
+import { authedFetch, fetchProgress, fetchResult, loadDraft, ONBOARDING_API, PlaceNotFound, saveDraft, toHistory, toRequest, type Draft } from './api'
 import { getAuth } from './auth'
 import BirthStep from './BirthStep.vue'
 import EstimateResult from './EstimateResult.vue'
+import ProgressStrip from './ProgressStrip.vue'
 import QuestionStep from './QuestionStep.vue'
 import { turnSchema, type Birth, type OnboardingResult } from './schema'
 import SplashStep from './SplashStep.vue'
@@ -20,6 +21,8 @@ const startingNew = ref(false)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 const signInError = ref<string | null>(null)
+const scoring = ref(false)
+const placeError = ref<string | null>(null)
 
 const SIGN_IN_ERROR = "Sign-in didn't work this time. Give it another go in a minute."
 
@@ -34,7 +37,8 @@ const { submit, object, isLoading } = useObject({
       result.value = { ...toHistory(current), estimate: turn.estimate, completedAt: new Date().toISOString() }
       setDraft(null)
     } else if (turn.question) {
-      setDraft({ ...current, steps: [...current.steps, { question: turn.question }] })
+      const progress = current.progress && { ...current.progress, note: turn.note }
+      setDraft({ ...current, progress, steps: [...current.steps, { question: turn.question }] })
     }
   },
 })
@@ -50,7 +54,28 @@ function setDraft(next: Draft | null) {
 }
 
 function requestNext() {
-  if (draft.value) submit(toHistory(draft.value))
+  if (draft.value) submit(toRequest(draft.value))
+}
+
+/** Reads the latest answer's dated events and re-scores the day, then asks for the next question. */
+async function scoreAndContinue() {
+  const current = draft.value
+  if (!current) return
+  scoring.value = true
+  placeError.value = null
+  try {
+    const { location, events, progress } = await fetchProgress(current)
+    setDraft({ ...current, birth: { ...current.birth, location }, events, progress })
+  } catch (cause) {
+    if (cause instanceof PlaceNotFound) {
+      placeError.value = cause.message
+      return
+    }
+    // Scoring is a bonus: the questions carry on without it.
+  } finally {
+    scoring.value = false
+  }
+  requestNext()
 }
 
 async function load() {
@@ -61,7 +86,7 @@ async function load() {
     if (signedIn.value && !draft.value) result.value = await fetchResult()
     // A returning user with a saved estimate goes straight to their Season Wheel.
     if (result.value) emit('ready', result.value)
-    if (signedIn.value && draft.value && !pending.value) requestNext()
+    if (signedIn.value && draft.value && !pending.value) scoreAndContinue()
   } catch (cause) {
     loadError.value = cause instanceof Error ? cause.message : 'Something went wrong loading Joyo.'
   } finally {
@@ -93,7 +118,7 @@ async function signIn() {
 
 function start(birth: Birth) {
   setDraft({ birth, steps: [] })
-  if (signedIn.value) requestNext()
+  if (signedIn.value) scoreAndContinue()
 }
 
 function answer(value: string | null) {
@@ -101,7 +126,13 @@ function answer(value: string | null) {
   const { steps } = draft.value
   const last = steps.length - 1
   setDraft({ ...draft.value, steps: steps.map((step, index) => (index === last ? { ...step, answer: value } : step)) })
-  requestNext()
+  scoreAndContinue()
+}
+
+function changePlace() {
+  placeError.value = null
+  startingNew.value = true
+  setDraft(null)
 }
 
 function restart() {
@@ -115,7 +146,21 @@ onMounted(load)
 
 <template>
   <div class="onboarding">
+    <ProgressStrip
+      v-if="signedIn && draft?.progress && !placeError"
+      :progress="draft.progress"
+      :note="object?.note ?? draft.progress.note ?? null"
+      :events="draft.events ?? []"
+    />
+
     <p v-if="loading" class="status">Finding your place…</p>
+
+    <div v-else-if="placeError" class="status">
+      <p class="error" role="alert">✦ {{ placeError }}</p>
+      <button type="button" @click="changePlace">Change my birthplace</button>
+    </div>
+
+    <p v-else-if="scoring" class="status" aria-live="polite">Reading your answer against the sky…</p>
 
     <div v-else-if="loadError" class="status">
       <p>{{ loadError }}</p>

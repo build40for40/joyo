@@ -1,5 +1,6 @@
 import { getAuth } from './auth'
-import type { AnsweredStep, Birth, History, LifeEvent, OnboardingResult, Question } from './schema'
+import type { DayScore } from '../../worker/sky/score'
+import type { AnsweredStep, Birth, History, LifeEvent, Location, OnboardingResult, Question, TurnRequest } from './schema'
 
 export const ONBOARDING_API = `${import.meta.env.BASE_URL}api/onboarding`
 
@@ -9,6 +10,33 @@ export interface Draft {
   birth: Birth
   /** The last step has no answer while it waits on the user. A null answer is a skip. */
   steps: { question: Question; answer?: string | null }[]
+  /** Dated events the Worker has read from the answers so far. */
+  events?: LifeEvent[]
+  /** Where the estimate stood after the latest answer. */
+  progress?: Progress
+}
+
+export interface Progress {
+  score: DayScore
+  /** What the latest answer did to the leading time, from the scoring. */
+  moved: string
+  /** The model's one-line explanation of the latest answer. */
+  note?: string | null
+}
+
+export class PlaceNotFound extends Error {}
+
+/** Reads new dated events from the latest answer and re-scores the whole day. */
+export async function fetchProgress(draft: Draft): Promise<{ location: Location; events: LifeEvent[]; progress: Progress }> {
+  const response = await authedFetch(`${ONBOARDING_API}/progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toRequest(draft)),
+  })
+  if (response.status === 422) throw new PlaceNotFound(await response.text())
+  if (!response.ok) throw new Error(`Scoring your answers failed with ${response.status}.`)
+  const { location, events, score, moved } = await response.json()
+  return { location, events, progress: { score, moved } }
 }
 
 export const authedFetch: typeof fetch = async (input, init) => {
@@ -67,4 +95,8 @@ export function saveDraft(draft: Draft | null) {
 
 export function toHistory({ birth, steps }: Draft): History {
   return { birth, steps: steps.filter((step): step is AnsweredStep => step.answer !== undefined) }
+}
+
+export function toRequest(draft: Draft, finish = false): TurnRequest {
+  return { ...toHistory(draft), events: draft.events ?? [], finish }
 }

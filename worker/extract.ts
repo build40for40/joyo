@@ -1,6 +1,6 @@
 import type { ModelMessage } from 'ai'
 
-import { MAX_UPLOAD_BYTES, UPLOAD_TYPES } from '../src/onboarding/schema'
+import { MAX_UPLOAD_BYTES, UPLOAD_TYPES, type TurnRequest } from '../src/onboarding/schema'
 
 export const EXTRACT_INSTRUCTIONS = `You read one document for Joyo, an app that works out someone's time of birth from the dated events of their life. The document belongs to the user: it might be a CV, an immigration or visa record, a certificate, a letter, a ticket or a photo of any of these.
 
@@ -30,4 +30,30 @@ export async function toExtractMessages(file: File): Promise<ModelMessage[]> {
       ? ({ type: 'text', text: await file.text() } as const)
       : ({ type: 'file', data: new Uint8Array(await file.arrayBuffer()), mediaType: file.type } as const)
   return [{ role: 'user', content: [document, { type: 'text', text: 'List the dated events in this document.' }] }]
+}
+
+export const ANSWER_EVENTS_INSTRUCTIONS = `You read one answer in Joyo's onboarding, an app that works out someone's time of birth from the dated events of their life.
+
+Return every dated event in the latest answer that isn't already in the known events, oldest first. The same rules apply as for documents:
+- A start and an end are two events. Describe each in a few plain words.
+- Set kind to the closest match, and about to whose event it is.
+- Give each date as precisely as the user did: YYYY-MM-DD, YYYY-MM or YYYY. If they hedged ("I think", "around"), confidence is medium.
+- Lines under "From a document:" are exact and high confidence.
+- Never include ID numbers, addresses, phone numbers, email addresses or other people's full names.
+- If the answer has no new dated events, return an empty list.`
+
+/** The question, the latest answer and the events already known, for reading new events from the answer. */
+export function toAnswerMessages(turn: TurnRequest): ModelMessage[] {
+  const last = turn.steps[turn.steps.length - 1]
+  return [
+    {
+      role: 'user',
+      content: [
+        `Date of birth: ${turn.birth.date}`,
+        `Known events: ${JSON.stringify(turn.events.map(({ kind, about, date, type }) => ({ kind, about, date, type })))}`,
+        `Question: ${last?.question.text ?? ''}`,
+        `Latest answer: ${last?.answer ?? ''}`,
+      ].join('\n'),
+    },
+  ]
 }
