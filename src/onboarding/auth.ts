@@ -1,7 +1,7 @@
 import { createClient } from '@workos-inc/authkit-js'
 
 /** Public WorkOS client id. Keep it in step with `WORKOS_CLIENT_ID` in wrangler.jsonc. */
-export const WORKOS_CLIENT_ID = ''
+export const WORKOS_CLIENT_ID = 'client_01M6E5ZDCH31RFHPJTD8N5JQZY'
 
 let client: ReturnType<typeof createClient> | undefined
 
