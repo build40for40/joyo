@@ -269,15 +269,6 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
       </div>
 
       <section class="panel" aria-label="Your birth, questions and story">
-        <BirthCard
-          :date="result.birth.date"
-          :estimate="estimate"
-          :record="record"
-          @save="setRecord"
-          @clear="setRecord(null)"
-          @jump="jumpTo(0)"
-        />
-
         <div class="modes" role="tablist" aria-label="What to do">
           <button
             id="ask-tab"
@@ -370,6 +361,15 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             <li v-if="!sortedMilestones.length" class="empty">No dated moments yet. Add one above.</li>
           </ul>
         </div>
+
+        <BirthCard
+          :date="result.birth.date"
+          :estimate="estimate"
+          :record="record"
+          @save="setRecord"
+          @clear="setRecord(null)"
+          @jump="jumpTo(0)"
+        />
       </section>
     </div>
 
