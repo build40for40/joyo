@@ -40,7 +40,8 @@ const mountWheel = () => mount(SeasonWheel, { props: { result, now: new Date('20
 describe('SeasonWheel', () => {
   it('shows the birth details, the estimate and the milestones from onboarding', () => {
     const wrapper = mountWheel()
-    expect(wrapper.find('.person').text()).toContain('Born 12 Apr 1990 · Testville · 07:30–09:30 (estimated)')
+    expect(wrapper.find('.person').text()).toContain('Born 12 Apr 1990 · Testville')
+    expect(wrapper.find('.person').text()).toContain('07:30–09:30 (estimated)')
     expect(wrapper.find('.birth').text()).toContain('12 Apr 199007:30–09:30')
     expect(wrapper.find('.birth').text()).toContain('Estimated from your milestones · medium confidence')
     expect(wrapper.find('.birth').text()).toContain('not a certainty')
@@ -92,7 +93,8 @@ describe('SeasonWheel', () => {
     await wrapper.findAll('.birth .chip')[0]!.trigger('click')
     await wrapper.find('.birth form').trigger('submit')
 
-    expect(wrapper.find('.person').text()).toContain('Born 11 Apr 1990 · Testville · 05:50 (birth certificate)')
+    expect(wrapper.find('.person').text()).toContain('Born 11 Apr 1990 · Testville')
+    expect(wrapper.find('.person').text()).toContain('05:50 (birth certificate)')
     expect(wrapper.find('.birth').text()).toContain('From your birth certificate')
     expect(wrapper.find('.birth').text()).toContain('Your milestones pointed to 07:30–09:30')
     expect(wrapper.find('.birth').text()).not.toContain('not a certainty')
