@@ -1,9 +1,10 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai'
+import { createTextStreamResponse, generateText, Output, streamText, toTextStream } from 'ai'
 
-import { finalTurnSchema, historySchema, turnSchema } from '../src/onboarding/schema'
+import { extractionSchema, finalTurnSchema, historySchema, turnSchema } from '../src/onboarding/schema'
 import { workosClientId } from '../src/onboarding/workos'
 import { authenticate, workosIssuer, workosKeys } from './auth'
+import { checkUpload, EXTRACT_INSTRUCTIONS, toExtractMessages } from './extract'
 import { isLastTurn, LAST_TURN_INSTRUCTION, toModelMessages } from './messages'
 import onboardingPrompt from './onboarding-prompt.md'
 import { resultKey, saveResult } from './results'
@@ -27,6 +28,7 @@ export default {
     if (!userId) return new Response('Sign in to continue.', { status: 401 })
 
     if (request.method === 'POST' && pathname === `${API}/next`) return next(request, env, ctx, userId)
+    if (request.method === 'POST' && pathname === `${API}/extract`) return extract(request, env)
     if (request.method === 'GET' && pathname === `${API}/result`) return getResult(env, userId)
     return new Response('Not found', { status: 404 })
   },
@@ -69,6 +71,29 @@ async function next(request: Request, env: Env, ctx: ExecutionContext, userId: s
   })
 
   return createTextStreamResponse({ stream: toTextStream({ stream: result.stream }) })
+}
+
+/** Reads dated events from one uploaded document. The document itself is never stored or logged. */
+async function extract(request: Request, env: Env) {
+  const form = await request.formData().catch(() => null)
+  const upload = checkUpload(form?.get('file') ?? null)
+  if (!upload.ok) return new Response(upload.message, { status: upload.status })
+
+  const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
+  try {
+    const { output } = await generateText({
+      model: anthropic(MODEL),
+      instructions: EXTRACT_INSTRUCTIONS,
+      messages: await toExtractMessages(upload.file),
+      output: Output.object({ schema: extractionSchema, name: 'events' }),
+      providerOptions: { anthropic: { effort: 'low', fallbacks: 'default' } },
+    })
+    return Response.json(output)
+  } catch (error) {
+    // The default error carries the request, which holds the document.
+    console.error('Document extraction failed:', errorName(error))
+    return new Response("We couldn't read that document.", { status: 502 })
+  }
 }
 
 function parseJson(text: string): unknown {

@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 export const MAX_QUESTIONS = 12
-export const MAX_ANSWER_LENGTH = 2000
+/** Room for a dictated answer or the events read from a CV. */
+export const MAX_ANSWER_LENGTH = 4000
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+export const UPLOAD_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'text/plain'] as const
 
 export const TIMES_OF_DAY = ['morning', 'afternoon', 'evening', 'night', 'unknown'] as const
 export const SURENESS = ['sure', 'fairly_sure', 'not_sure'] as const
@@ -40,6 +43,11 @@ export const eventSchema = z.object({
     .enum(['high', 'medium', 'low'])
     .describe('Medium when the user hedged ("I think", "around"). Low for events about other.'),
   notes: z.string(),
+})
+
+/** What the Worker reads from an uploaded document: dated events and nothing else. */
+export const extractionSchema = z.object({
+  events: z.array(eventSchema).describe('Every dated event in the document, oldest first. Empty if there are none.'),
 })
 
 export const estimateSchema = z.object({
@@ -83,6 +91,7 @@ export const historySchema = z.object({
 export type Birth = z.infer<typeof birthSchema>
 export type Question = z.infer<typeof questionSchema>
 export type Estimate = z.infer<typeof estimateSchema>
+export type LifeEvent = z.infer<typeof eventSchema>
 export type Turn = z.infer<typeof turnSchema>
 export type History = z.infer<typeof historySchema>
 export type AnsweredStep = History['steps'][number]

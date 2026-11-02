@@ -329,6 +329,87 @@ onMounted(load)
   opacity: 0.6;
 }
 
+.onboarding button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.onboarding .inputs {
+  display: flex;
+  gap: var(--joyo-space-3);
+  align-items: stretch;
+}
+
+.onboarding .mic {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--joyo-surface-2);
+  border: 1px solid var(--joyo-line);
+  color: var(--joyo-ivory);
+  box-shadow: none;
+}
+
+.onboarding .mic:hover,
+.onboarding .mic.listening {
+  background: var(--joyo-surface-2);
+  border-color: var(--joyo-gold);
+  color: var(--joyo-gold);
+}
+
+.onboarding .mic.listening {
+  animation: joyo-pulse 1.6s var(--joyo-ease) infinite;
+}
+
+@keyframes joyo-pulse {
+  50% {
+    box-shadow: 0 0 0 8px var(--joyo-gold-soft);
+  }
+}
+
+.onboarding .mic svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.onboarding .dropzone {
+  flex: 1;
+  gap: var(--joyo-space-1);
+  padding: var(--joyo-space-3) var(--joyo-space-4);
+  border: 1px dashed var(--joyo-line);
+  border-radius: var(--joyo-radius-input);
+  cursor: pointer;
+  transition: border-color var(--joyo-dur-fast) var(--joyo-ease);
+}
+
+.onboarding .dropzone:hover,
+.onboarding .dropzone.dragging,
+.onboarding .dropzone:focus-within {
+  border-color: var(--joyo-gold);
+}
+
+.onboarding .dropzone small {
+  font-weight: 400;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 480px) {
   .onboarding .step {
     padding: 20px;
