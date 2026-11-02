@@ -10,7 +10,23 @@ vi.mock('./auth', () => ({
   getAuth: async () => ({ getUser: () => auth.user, getAccessToken: async () => 'token', signIn: auth.signIn }),
 }))
 
-const birth = { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, notes: '' }
+const birth = { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, time: null, timeSource: null, notes: '' }
+
+const result: OnboardingResult = {
+  birth,
+  steps: [],
+  completedAt: '2026-11-02T09:00:00.000Z',
+  estimate: {
+    earliest: '07:30',
+    latest: '09:30',
+    bestGuess: '08:15',
+    window: 'morning',
+    confidence: 'low',
+    summary: 'A first guess from family memory.',
+    basis: ['Born before breakfast'],
+    events: [],
+  },
+}
 
 function setUp({ signedIn, draft, result }: { signedIn: boolean; draft?: Draft; result?: OnboardingResult }) {
   auth.user = signedIn ? { id: 'user_test' } : null
@@ -67,6 +83,7 @@ describe('OnboardingFlow', () => {
     const wrapper = await mountFlow()
     await wrapper.findAll('button').find((button) => button.text() === 'Starting new')!.trigger('click')
     expect(wrapper.text()).not.toContain('How sure are they?')
+    await wrapper.findAll('button').find((button) => button.text() === 'Roughly')!.trigger('click')
     await wrapper.findAll('button').find((button) => button.text() === 'Evening')!.trigger('click')
     expect(wrapper.text()).toContain('How sure are they?')
   })
@@ -87,27 +104,47 @@ describe('OnboardingFlow', () => {
   })
 
   it("shows a signed-in user's saved estimate", async () => {
-    setUp({
-      signedIn: true,
-      result: {
-        birth,
-        steps: [],
-        completedAt: '2026-11-02T09:00:00.000Z',
-        estimate: {
-          earliest: '07:30',
-          latest: '09:30',
-          bestGuess: '08:15',
-          window: 'morning',
-          confidence: 'low',
-          summary: 'A first guess from family memory.',
-          basis: ['Born before breakfast'],
-          events: [],
-        },
-      },
-    })
+    setUp({ signedIn: true, result })
     const wrapper = await mountFlow()
     expect(wrapper.text()).toContain('Between 07:30 and 09:30')
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/api\/onboarding\/result$/), expect.anything())
     expect(wrapper.emitted('ready')?.[0]?.[0]).toMatchObject({ estimate: { bestGuess: '08:15' } })
+    expect(wrapper.text()).not.toContain('Start again')
+  })
+
+  it('drops a new draft and goes into the app when the user already has an estimate', async () => {
+    setUp({ signedIn: true, draft: { birth, steps: [] }, result })
+    const wrapper = await mountFlow()
+    expect(wrapper.emitted('ready')).toHaveLength(1)
+    expect(localStorage.getItem('joyo:onboarding-draft')).toBeNull()
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringMatching(/api\/onboarding\/next$/), expect.anything())
+  })
+
+  it('shows stars, not the streaming text, until the next question is ready', async () => {
+    setUp({ signedIn: true, draft: { birth, steps: [] } })
+    const question = { text: 'Is there a birth certificate?', hint: null, input: 'choice', options: ['Yes', 'No'] }
+    const turn = new TextEncoder().encode(JSON.stringify({ question, estimate: null }))
+    let finish = () => {}
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (String(url).endsWith('/result')) return new Response('Not found', { status: 404 })
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(turn.slice(0, 30))
+          finish = () => {
+            controller.enqueue(turn.slice(30))
+            controller.close()
+          }
+        },
+      })
+      return new Response(body)
+    })
+    const wrapper = await mountFlow()
+    expect(wrapper.find('.loading-stars').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Is there a')
+
+    finish()
+    await flushPromises()
+    expect(wrapper.find('.loading-stars').exists()).toBe(false)
+    expect(wrapper.find('h2').text()).toBe('Is there a birth certificate?')
   })
 })

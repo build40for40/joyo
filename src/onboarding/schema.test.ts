@@ -11,9 +11,16 @@ describe('historySchema', () => {
     expect(historySchema.safeParse(history).success).toBe(true)
   })
 
-  it('treats missing time-of-day fields as no idea, not sure', () => {
+  it('treats missing time fields as no idea, not sure, no exact time', () => {
     const parsed = historySchema.parse({ birth, steps: [] })
-    expect(parsed.birth).toMatchObject({ timeOfDay: 'unknown', sureness: 'not_sure' })
+    expect(parsed.birth).toMatchObject({ timeOfDay: 'unknown', sureness: 'not_sure', time: null, timeSource: null })
+  })
+
+  it('accepts an exact time as HH:MM with where it came from', () => {
+    const exact = { ...birth, time: '06:40', timeSource: 'certificate' }
+    expect(historySchema.safeParse({ birth: exact, steps: [] }).success).toBe(true)
+    expect(historySchema.safeParse({ birth: { ...exact, time: '6:40pm' }, steps: [] }).success).toBe(false)
+    expect(historySchema.safeParse({ birth: { ...exact, time: '24:10' }, steps: [] }).success).toBe(false)
   })
 
   it('rejects a time of day outside the chips', () => {

@@ -16,6 +16,14 @@ const SURENESS: Record<History['birth']['sureness'], string> = {
   not_sure: 'Not sure',
 }
 
+const TIME_SOURCE: Record<NonNullable<History['birth']['timeSource']>, string> = {
+  certificate: 'My birth certificate',
+  hospital: 'A hospital record',
+  kundli: 'A kundli cast at my birth',
+  diary: 'A family diary',
+  memory: 'Someone remembers it',
+}
+
 export const LAST_TURN_INSTRUCTION =
   'You have asked as many questions as onboarding allows. Give the estimate now, with question set to null.'
 
@@ -30,6 +38,8 @@ export function toModelMessages({ birth, steps }: History): ModelMessage[] {
       content: [
         `Date of birth: ${birth.date}`,
         `Place of birth: ${birth.place}`,
+        `Exact time of birth: ${birth.time ?? "I don't know it"}`,
+        ...(birth.time && birth.timeSource ? [`Where that time comes from: ${TIME_SOURCE[birth.timeSource]}`] : []),
         `Time of day I've been told: ${TIME_OF_DAY[birth.timeOfDay]}`,
         `How sure that is: ${SURENESS[birth.sureness]}`,
         `What I know about the time: ${birth.notes || 'Nothing.'}`,

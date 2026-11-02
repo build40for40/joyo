@@ -2,7 +2,7 @@ import type { OnboardingResult } from '@/onboarding/schema'
 
 /** An invented person, for opening the wheel at /joyo/#wheel-preview in dev without signing in. */
 export const previewResult: OnboardingResult = {
-  birth: { date: '1988-03-14', place: 'Testville, Exampleland', timeOfDay: 'morning', sureness: 'not_sure', notes: '' },
+  birth: { date: '1988-03-14', place: 'Testville, Exampleland', timeOfDay: 'morning', sureness: 'not_sure', time: null, timeSource: null, notes: '' },
   steps: [],
   completedAt: 'preview',
   estimate: {
