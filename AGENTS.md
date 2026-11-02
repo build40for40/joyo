@@ -12,6 +12,7 @@ A small web app for data input and visualisation. Shared project context, servic
 ## Commands
 
 - `npm run dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/joyo/api` to the Worker. Copy `.dev.vars.example` to `.dev.vars` and add an `ANTHROPIC_API_KEY` first.
+- `npm run fake`: Vite only, with `dev/fake-api.ts` standing in for the Worker and a fake sign-in, so the onboarding can be clicked through with no Anthropic key or WorkOS. Questions, document reading and the estimate are canned. Production builds leave all of it out.
 - `npm test`: unit tests.
 - `npm run build`: type-check with `vue-tsc`, then build to `dist/`.
 

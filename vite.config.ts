@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
+import { fakeApi } from './dev/fake-api'
+
 // https://vite.dev/config/
 export default defineConfig({
   base: '/joyo/',
@@ -18,6 +20,7 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    fakeApi(),
   ],
   resolve: {
     alias: {
