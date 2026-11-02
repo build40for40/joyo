@@ -56,8 +56,8 @@ describe('SeasonWheel', () => {
 
   it('adds a dated milestone, saves it and jumps to it', async () => {
     const wrapper = mountWheel()
-    await wrapper.find('textarea').setValue('Started a company in February 2024')
-    await wrapper.find('form').trigger('submit')
+    await wrapper.find('#milestone').setValue('Started a company in February 2024')
+    await wrapper.find('#story-panel form').trigger('submit')
     expect(wrapper.find('.milestones').text()).toContain('Started a company · added')
     expect(wrapper.find('.date').text()).toContain('Feb 2024')
     expect(JSON.parse(items.get(`joyo:milestones:${result.completedAt}`)!)).toMatchObject([
@@ -67,8 +67,8 @@ describe('SeasonWheel', () => {
 
   it('asks for a date when a milestone has none', async () => {
     const wrapper = mountWheel()
-    await wrapper.find('textarea').setValue('Started a company')
-    await wrapper.find('form').trigger('submit')
+    await wrapper.find('#milestone').setValue('Started a company')
+    await wrapper.find('#story-panel form').trigger('submit')
     expect(wrapper.text()).toContain('Add a month and year')
     expect(items.size).toBe(0)
   })
@@ -110,5 +110,37 @@ describe('SeasonWheel', () => {
     await wrapper.find('.birth form').trigger('submit')
     expect(wrapper.find('.birth [role="alert"]').text()).toContain('Pick where the time is written down.')
     expect(items.size).toBe(0)
+  })
+
+  it('opens on asking, with Ask as the gold action and Add outlined', () => {
+    const wrapper = mountWheel()
+    expect(wrapper.find('#ask-tab').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('#ask-panel .primary').text()).toBe('Ask')
+    expect(wrapper.find('#story-panel .secondary').text()).toBe('Add')
+  })
+
+  it('answers a picked question with starred windows on the timeline', async () => {
+    const wrapper = mountWheel()
+    await wrapper.findAll('.chip').find((chip) => chip.text() === 'Marriage')!.trigger('click')
+    expect(wrapper.find('.answer h3').text()).toBe('When is a good time to marry?')
+    expect(wrapper.findAll('.answer .windows li').length).toBeGreaterThan(0)
+    expect(wrapper.find('.answer').text()).toContain('strongest')
+    expect(wrapper.find('.answer').text()).toContain('In your story: Married · Jun 2015')
+    expect(wrapper.find('.answer').text()).toContain('treat the edges of each window loosely')
+  })
+
+  it('matches a typed question and frames "should" kindly', async () => {
+    const wrapper = mountWheel()
+    await wrapper.find('#question').setValue('Should I move to another country?')
+    await wrapper.find('#ask-panel form').trigger('submit')
+    expect(wrapper.find('.answer h3').text()).toBe('Should I move to another country?')
+    expect(wrapper.find('.answer').text()).toContain('If you do, these seasons support it.')
+    expect(wrapper.find('.chip[aria-pressed="true"]').text()).toContain('Move countries')
+  })
+
+  it('reminds people to follow their doctor on health questions', async () => {
+    const wrapper = mountWheel()
+    await wrapper.findAll('.chip').find((chip) => chip.text() === 'Health')!.trigger('click')
+    expect(wrapper.find('.answer').text()).toContain("Go with your doctor's timing first.")
   })
 })

@@ -174,3 +174,13 @@ export function formatMonth(ms: number) {
 export function formatDay(ms: number) {
   return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
+
+/** A span of months, like "Mar–Jun 2027" or "Oct 2028–Jan 2029". */
+export function formatRange(startMs: number, endMs: number) {
+  const start = new Date(startMs)
+  const end = new Date(endMs)
+  const month = (date: Date) => date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })
+  if (start.getUTCFullYear() !== end.getUTCFullYear()) return `${formatMonth(startMs)}–${formatMonth(endMs)}`
+  if (start.getUTCMonth() === end.getUTCMonth()) return formatMonth(startMs)
+  return `${month(start)}–${month(end)} ${end.getUTCFullYear()}`
+}

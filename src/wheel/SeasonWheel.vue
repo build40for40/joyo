@@ -3,9 +3,11 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { OnboardingResult } from '@/onboarding/schema'
 import { loadBirthRecord, RECORD_SOURCES, saveBirthRecord, type BirthRecord } from './birth'
+import AskPanel from './AskPanel.vue'
 import BirthCard from './BirthCard.vue'
 import LifeTimeline from './LifeTimeline.vue'
 import { loadAddedMilestones, saveAddedMilestones, type AddedMilestone } from './milestones'
+import { readSeasons, type Question } from './questions'
 import {
   birthMs,
   DAY_MS,
@@ -24,7 +26,9 @@ import WheelCanvas from './WheelCanvas.vue'
 const props = defineProps<{ result: OnboardingResult; now?: Date }>()
 
 const FORECAST_YEARS = 12
-const SPEEDS = [2, 5, 10]
+/** Years per second at each speed, for the whole life and for the next few years. */
+const SPEEDS = { life: [2, 5, 10], ahead: [0.5, 1, 2] }
+const AHEAD_YEARS = 5
 
 const { estimate } = props.result
 
@@ -56,23 +60,43 @@ const age = computed(() => Math.max(0, Math.floor(t.value / 365.25)))
 const place = props.result.birth.place.split(',')[0]
 const at = (days: number) => birth.value + days * DAY_MS
 
+// Asking about a big moment: its seasons go on the timeline, and the wheel jumps to the strongest window.
+const mode = ref<'ask' | 'story'>('ask')
+const asked = ref<{ question: Question; text: string } | null>(null)
+const reading = computed(() =>
+  asked.value ? readSeasons(model.value, milestones.value, asked.value.question, today.value, span.value) : null,
+)
+
+// The timeline shows the whole life, or zooms to the next few years where the answers are.
+const view = ref<'life' | 'ahead'>('life')
+const from = computed(() => (view.value === 'ahead' ? Math.max(0, today.value - 365) : 0))
+const to = computed(() => (view.value === 'ahead' ? today.value + Math.round((AHEAD_YEARS + 0.5) * 365.25) : span.value))
+
+function ask(question: Question | null, text: string) {
+  asked.value = question && { question, text }
+  if (question) view.value = 'ahead'
+  const strongest = reading.value?.windows.find((window) => window.strongest)
+  if (strongest) jumpTo(strongest.peak)
+}
+
 // Playback through life.
 const playing = ref(false)
-const speed = ref(5)
+const speedStep = ref(1)
+const speed = computed(() => SPEEDS[view.value][speedStep.value]!)
 let frame = 0
 let last = 0
 
 function step(time: number) {
-  t.value = Math.min(span.value, t.value + ((time - last) / 1000) * speed.value * 365.25)
+  t.value = Math.min(to.value, t.value + ((time - last) / 1000) * speed.value * 365.25)
   last = time
-  if (t.value >= span.value) playing.value = false
+  if (t.value >= to.value) playing.value = false
   else frame = requestAnimationFrame(step)
 }
 
 watch(playing, (on) => {
   cancelAnimationFrame(frame)
   if (!on) return
-  if (t.value >= span.value) t.value = 0
+  if (t.value >= to.value || t.value < from.value) t.value = from.value
   last = performance.now()
   frame = requestAnimationFrame(step)
 })
@@ -206,22 +230,36 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             </p>
             <div class="speed" role="group" aria-label="Playback speed">
               <button
-                v-for="s in SPEEDS"
+                v-for="(s, i) in SPEEDS[view]"
                 :key="s"
                 type="button"
-                :aria-pressed="speed === s"
-                @click="speed = s"
+                :aria-pressed="speedStep === i"
+                @click="speedStep = i"
               >
                 {{ s }} yr/s
               </button>
             </div>
           </div>
-          <LifeTimeline v-model="t" :birth="birth" :span="span" :today="today" :milestones="milestones" />
+          <div class="views" role="group" aria-label="Timeline range">
+            <button type="button" :aria-pressed="view === 'life'" @click="view = 'life'">Whole life</button>
+            <button type="button" :aria-pressed="view === 'ahead'" @click="view = 'ahead'">
+              Next {{ AHEAD_YEARS }} years
+            </button>
+          </div>
+          <LifeTimeline
+            v-model="t"
+            :birth="birth"
+            :from="from"
+            :to="to"
+            :today="today"
+            :milestones="milestones"
+            :reading="reading"
+          />
           <input
             v-model.number="t"
             type="range"
-            min="0"
-            :max="span"
+            :min="from"
+            :max="to"
             step="1"
             aria-label="Date in your life"
             :aria-valuetext="formatDay(at(t))"
@@ -230,7 +268,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
         </section>
       </div>
 
-      <section class="panel" aria-labelledby="story-heading">
+      <section class="panel" aria-label="Your birth, questions and story">
         <BirthCard
           :date="result.birth.date"
           :estimate="estimate"
@@ -240,38 +278,72 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
           @jump="jumpTo(0)"
         />
 
-        <div>
-          <h2 id="story-heading">Add to your story</h2>
-          <p>Type or say a milestone and roughly when it happened. Month and year is enough.</p>
+        <div class="modes" role="tablist" aria-label="What to do">
+          <button
+            id="ask-tab"
+            type="button"
+            role="tab"
+            :aria-selected="mode === 'ask'"
+            aria-controls="ask-panel"
+            @click="mode = 'ask'"
+          >
+            Ask about a time
+          </button>
+          <button
+            id="story-tab"
+            type="button"
+            role="tab"
+            :aria-selected="mode === 'story'"
+            aria-controls="story-panel"
+            @click="mode = 'story'"
+          >
+            Add to your story
+          </button>
         </div>
 
-        <form class="composer" @submit.prevent="add">
-          <label class="sr-only" for="milestone">New milestone</label>
-          <textarea
-            id="milestone"
-            v-model="draft"
-            rows="3"
-            placeholder="e.g. Started a new role in March 2026"
-            @keydown.enter.exact.prevent="add"
-          />
-          <div class="composer-bar">
-            <button
-              v-if="Speech"
-              type="button"
-              class="icon"
-              :class="{ listening }"
-              aria-label="Say a milestone"
-              @click="listen"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-              </svg>
-            </button>
-            <span class="hint" aria-live="polite">{{ hint }}</span>
-            <button type="submit" class="primary">Add</button>
-          </div>
-        </form>
+        <AskPanel
+          v-show="mode === 'ask'"
+          id="ask-panel"
+          role="tabpanel"
+          aria-labelledby="ask-tab"
+          :reading="reading"
+          :asked="asked?.text ?? ''"
+          :birth="birth"
+          :record-source="record ? RECORD_SOURCES[record.source] : null"
+          @ask="ask"
+          @jump="jumpTo"
+        />
+
+        <div v-show="mode === 'story'" id="story-panel" class="story" role="tabpanel" aria-labelledby="story-tab">
+          <p class="intro">Type or say a milestone and roughly when it happened. Month and year is enough.</p>
+          <form class="composer" @submit.prevent="add">
+            <label class="sr-only" for="milestone">New milestone</label>
+            <textarea
+              id="milestone"
+              v-model="draft"
+              rows="3"
+              placeholder="e.g. Started a new role in March 2026"
+              @keydown.enter.exact.prevent="add"
+            />
+            <div class="composer-bar">
+              <button
+                v-if="Speech"
+                type="button"
+                class="icon"
+                :class="{ listening }"
+                aria-label="Say a milestone"
+                @click="listen"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                </svg>
+              </button>
+              <span class="hint" aria-live="polite">{{ hint }}</span>
+              <button type="submit" class="secondary">Add</button>
+            </div>
+          </form>
+        </div>
 
         <div>
           <h3 class="label">Your milestones</h3>
@@ -486,12 +558,19 @@ button:hover {
   margin-left: auto;
 }
 
-.speed button {
+.views {
+  display: flex;
+  gap: 6px;
+}
+
+.speed button,
+.views button {
   padding: 6px 12px;
   font-size: 12px;
 }
 
-.speed button[aria-pressed='true'] {
+.speed button[aria-pressed='true'],
+.views button[aria-pressed='true'] {
   border-color: var(--joyo-gold);
   color: var(--joyo-gold);
 }
@@ -539,11 +618,6 @@ input[type='range']::-moz-range-thumb {
   display: grid;
   gap: var(--joyo-space-4);
   padding: 20px;
-}
-
-.panel h2 {
-  font-family: var(--joyo-font-display);
-  font-weight: 400;
 }
 
 .panel p {
@@ -626,18 +700,47 @@ input[type='range']::-moz-range-thumb {
   color: var(--joyo-lavender);
 }
 
-.primary {
+/* The gold primary on this panel is Ask, so Add is outlined. */
+.secondary {
   padding: var(--joyo-space-2) 22px;
   border-color: var(--joyo-gold);
-  background: var(--joyo-gold);
-  color: var(--joyo-on-gold);
-  box-shadow: 0 0 22px var(--joyo-gold-soft);
+  color: var(--joyo-gold);
 }
 
-.primary:hover {
-  border-color: var(--joyo-gold-hover);
-  background: var(--joyo-gold-hover);
-  color: var(--joyo-on-gold);
+.secondary:hover {
+  background: var(--joyo-gold-soft);
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: var(--joyo-space-1);
+  border: 1px solid var(--joyo-line);
+  border-radius: var(--joyo-radius-pill);
+  background: var(--joyo-surface-2);
+}
+
+.modes button {
+  min-height: 40px;
+  padding: var(--joyo-space-2) var(--joyo-space-3);
+  border: 0;
+  font-size: 14px;
+}
+
+.modes button[aria-selected='true'] {
+  background: var(--joyo-gold-soft);
+  color: var(--joyo-gold);
+}
+
+.story {
+  display: grid;
+  gap: var(--joyo-space-3);
+}
+
+.intro {
+  margin: 0;
+  font-size: 14px;
+  color: var(--joyo-lavender);
 }
 
 .label {
