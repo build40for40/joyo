@@ -2,7 +2,7 @@
 import type { Estimate } from './schema'
 
 defineProps<{ estimate: Estimate }>()
-const emit = defineEmits<{ restart: [] }>()
+const emit = defineEmits<{ open: []; restart: [] }>()
 </script>
 
 <template>
@@ -22,6 +22,7 @@ const emit = defineEmits<{ restart: [] }>()
       </ul>
     </template>
 
+    <button type="button" @click="emit('open')">See your Season Wheel</button>
     <button type="button" class="skip" @click="emit('restart')">Start again</button>
   </section>
 </template>

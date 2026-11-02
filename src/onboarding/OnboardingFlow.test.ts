@@ -108,5 +108,6 @@ describe('OnboardingFlow', () => {
     const wrapper = await mountFlow()
     expect(wrapper.text()).toContain('Between 07:30 and 09:30')
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/api\/onboarding\/result$/), expect.anything())
+    expect(wrapper.emitted('ready')?.[0]?.[0]).toMatchObject({ estimate: { bestGuess: '08:15' } })
   })
 })
