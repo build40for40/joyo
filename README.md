@@ -20,7 +20,8 @@ The AI asks the questions and explains the results. It never calculates planet p
 
 ```sh
 npm install
-npm run dev
+cp .dev.vars.example .dev.vars   # then add your ANTHROPIC_API_KEY
+npm run dev                      # Vite and the Worker API together
 ```
 
 ## Check

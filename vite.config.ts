@@ -10,6 +10,11 @@ export default defineConfig({
   build: {
     outDir: 'dist/joyo',
   },
+  server: {
+    proxy: {
+      '/joyo/api': 'http://localhost:8787',
+    },
+  },
   plugins: [
     vue(),
     vueDevTools(),

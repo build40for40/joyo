@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "run-p dev:*",
+    "dev:web": "vite",
+    "dev:api": "mkdir -p dist && npm run wrangler -- dev",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test": "vitest run",
@@ -14,9 +16,16 @@
     "deploy": "npm run build && npm run wrangler -- deploy"
   },
   "dependencies": {
-    "vue": "^3.5.42"
+    "@ai-sdk/anthropic": "^4.0.94",
+    "@ai-sdk/vue": "^4.0.159",
+    "@workos-inc/authkit-js": "^0.20.5",
+    "ai": "^7.0.159",
+    "jose": "^6.2.15",
+    "vue": "^3.5.42",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
     "@tsconfig/node24": "^24.0.5",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.4",

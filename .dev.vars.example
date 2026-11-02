@@ -1,0 +1,3 @@
+ANTHROPIC_API_KEY=
+# The staging WorkOS client, since wrangler dev shows the Worker the production hostname.
+WORKOS_CLIENT_ID=client_01M6E5ZDCH31RFHPJTD8N5JQZY
