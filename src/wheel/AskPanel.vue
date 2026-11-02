@@ -47,7 +47,10 @@ function ask() {
 
 <template>
   <div class="ask">
-    <p class="intro">Pick a big moment, or ask your own. Joyo marks the good seasons on your timeline with ✦.</p>
+    <p class="intro">
+      Joyo reads your Vedic chart (Jyotish) to find the good seasons for life's big moments. Pick one, or ask your own,
+      and they're marked on your timeline with ✦.
+    </p>
 
     <div class="chips" role="group" aria-label="Questions">
       <button

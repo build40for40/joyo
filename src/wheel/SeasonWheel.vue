@@ -278,7 +278,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             aria-controls="ask-panel"
             @click="mode = 'ask'"
           >
-            Ask about a time
+            Ask about your future
           </button>
           <button
             id="story-tab"
@@ -730,6 +730,13 @@ input[type='range']::-moz-range-thumb {
 .modes button[aria-selected='true'] {
   background: var(--joyo-gold-soft);
   color: var(--joyo-gold);
+}
+
+@media (max-width: 420px) {
+  .modes button {
+    padding-inline: var(--joyo-space-1);
+    font-size: 13px;
+  }
 }
 
 .story {
