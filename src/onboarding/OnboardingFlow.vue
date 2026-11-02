@@ -16,6 +16,8 @@ const loading = ref(true)
 const loadError = ref<string | null>(null)
 const signInError = ref<string | null>(null)
 
+const SIGN_IN_ERROR = "Sign-in didn't work this time. Give it another go in a minute."
+
 const { submit, object, isLoading } = useObject({
   api: `${ONBOARDING_API}/next`,
   schema: turnSchema,
@@ -61,9 +63,14 @@ async function load() {
 }
 
 async function isSignedIn() {
+  const returningFromSignIn = new URLSearchParams(window.location.search).has('code')
   try {
-    return (await getAuth()).getUser() !== null
+    const signedIn = (await getAuth()).getUser() !== null
+    // AuthKit logs a failed code exchange instead of throwing it.
+    if (returningFromSignIn && !signedIn) signInError.value = SIGN_IN_ERROR
+    return signedIn
   } catch {
+    signInError.value = SIGN_IN_ERROR
     return false
   }
 }
@@ -73,7 +80,7 @@ async function signIn() {
   try {
     await (await getAuth()).signIn()
   } catch {
-    signInError.value = "Sign-in isn't working right now. Give it another go in a minute."
+    signInError.value = SIGN_IN_ERROR
   }
 }
 
