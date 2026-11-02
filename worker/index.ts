@@ -2,6 +2,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai'
 
 import { finalTurnSchema, historySchema, turnSchema } from '../src/onboarding/schema'
+import { workosClientId } from '../src/onboarding/workos'
 import { authenticate, workosKeys } from './auth'
 import { isLastTurn, LAST_TURN_INSTRUCTION, toModelMessages } from './messages'
 import onboardingPrompt from './onboarding-prompt.md'
@@ -10,7 +11,6 @@ import { resultKey, saveResult } from './results'
 interface Env {
   RESULTS: KVNamespace
   ANTHROPIC_API_KEY: string
-  WORKOS_CLIENT_ID: string
 }
 
 const API = '/joyo/api/onboarding'
@@ -19,10 +19,10 @@ const MAX_BODY_LENGTH = 64_000
 
 export default {
   async fetch(request, env, ctx) {
-    const userId = await authenticate(request, workosKeys(env.WORKOS_CLIENT_ID))
+    const { hostname, pathname } = new URL(request.url)
+    const userId = await authenticate(request, workosKeys(workosClientId(hostname)))
     if (!userId) return new Response('Sign in to continue.', { status: 401 })
 
-    const { pathname } = new URL(request.url)
     if (request.method === 'POST' && pathname === `${API}/next`) return next(request, env, ctx, userId)
     if (request.method === 'GET' && pathname === `${API}/result`) return getResult(env, userId)
     return new Response('Not found', { status: 404 })
