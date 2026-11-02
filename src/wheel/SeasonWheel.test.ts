@@ -143,4 +143,13 @@ describe('SeasonWheel', () => {
     await wrapper.findAll('.chip').find((chip) => chip.text() === 'Health')!.trigger('click')
     expect(wrapper.find('.answer').text()).toContain("Go with your doctor's timing first.")
   })
+
+  it('jumps back to today from anywhere on the timeline', async () => {
+    const wrapper = mountWheel()
+    await wrapper.findAll('.chip').find((chip) => chip.text() === 'Marriage')!.trigger('click')
+    expect(wrapper.find('.date').text()).not.toContain('2 Nov 2026')
+    await wrapper.find('.today-link').trigger('click')
+    expect(wrapper.find('.date').text()).toBe('2 Nov 2026')
+    expect(wrapper.find('.today-link').attributes('aria-pressed')).toBe('true')
+  })
 })

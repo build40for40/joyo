@@ -228,6 +228,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
             <p class="date">
               {{ formatDay(at(t)) }}<small v-if="t > today + 15">forecast</small>
             </p>
+            <button type="button" class="today-link" :aria-pressed="t === today" @click="jumpTo(today)">Today</button>
             <div class="speed" role="group" aria-label="Playback speed">
               <button
                 v-for="(s, i) in SPEEDS[view]"
@@ -544,6 +545,16 @@ button:hover {
   margin: 0;
   font-family: var(--joyo-font-display);
   font-size: 24px;
+}
+
+.today-link {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.today-link[aria-pressed='true'] {
+  border-color: var(--joyo-gold);
+  color: var(--joyo-gold);
 }
 
 .date small {
