@@ -7,10 +7,11 @@ A small web app for data input and visualisation. Shared project context, servic
 - Vue 3 with `<script setup lang="ts">`, built with Vite.
 - Vitest with jsdom and `@vue/test-utils`. Unit tests sit next to their source as `*.test.ts`.
 - `@/` resolves to `src/`.
+- The Worker in `worker/` serves the API under `/joyo/api/*`. It calls Claude through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`), and the UI streams its structured output with `useObject` from `@ai-sdk/vue`. The zod schemas shared by both sides live in `src/onboarding/schema.ts`.
 
 ## Commands
 
-- `npm run dev`: local dev server.
+- `npm run dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/joyo/api` to the Worker. Copy `.dev.vars.example` to `.dev.vars` and add an `ANTHROPIC_API_KEY` and `WORKOS_CLIENT_ID` first.
 - `npm test`: unit tests.
 - `npm run build`: type-check with `vue-tsc`, then build to `dist/`.
 
@@ -20,6 +21,18 @@ A small web app for data input and visualisation. Shared project context, servic
 - Vite builds with `base: '/joyo/'` into `dist/joyo/`, so the asset paths match the URL path.
 - CI (`.github/workflows/ci.yml`) tests and builds every push and PR. Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
 - Deploys need the `CLOUDFLARE_API_TOKEN` repo secret. Without it CI still tests and builds, and skips deploying.
+- The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret and the `WORKOS_CLIENT_ID` var. The `RESULTS` KV binding is the `joyo-onboarding` namespace, which previews share with production.
+
+## Onboarding
+
+The first question (date, place and anything known about the time) is hardcoded in `BirthStep.vue` and needs no account. Then the user signs in with WorkOS AuthKit (`@workos-inc/authkit-js`, hosted sign-in), and Claude Sonnet 5.5 picks each question from the answers so far, one per screen, finishing with a rough birth time window and confidence. Its prompt is `worker/onboarding-prompt.md`.
+
+- **State lives in the browser.** The birth details and every question and answer are a draft in `localStorage`, which also carries them across the sign-in redirect. Each step POSTs the whole history, and the Worker keeps nothing between turns.
+- **Auth:** every API route needs `Authorization: Bearer <access token>`. The Worker verifies it with `jose` against `https://api.workos.com/sso/jwks/<client id>`, and the user id is the token's `sub`. The browser's client id is `WORKOS_CLIENT_ID` in `src/onboarding/auth.ts`, which must match the Worker's var. Never store the email.
+- `POST /joyo/api/onboarding/next` takes `{ birth, steps }`, checks it against `historySchema` and size caps, and streams the next `Turn`: a question or the estimate. After `MAX_QUESTIONS` it can only return the estimate.
+- When the model returns the estimate, the Worker itself writes `{ birth, steps, estimate, completedAt }` to KV under `result:<userId>`, so the browser can't forge a result. That is the only thing in KV, and it feeds the visualisation step.
+- `GET /joyo/api/onboarding/result` returns the signed-in user's result, or 404.
+- Onboarding never does astronomy either. It gathers evidence and gives an honest window, and the rectification flow below refines it.
 
 ## Product: Vedic birth time rectification
 

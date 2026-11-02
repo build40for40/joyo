@@ -1,8 +1,11 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import OnboardingFlow from '@/onboarding/OnboardingFlow.vue'
+</script>
 
 <template>
   <main>
     <h1>Joyo</h1>
+    <OnboardingFlow />
   </main>
 </template>
 
