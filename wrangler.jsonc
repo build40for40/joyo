@@ -1,0 +1,14 @@
+{
+  "name": "joyo",
+  "account_id": "9b4d3e616e55585a0ae844f424717b43",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    { "pattern": "build40for40.com/joyo", "zone_name": "build40for40.com" },
+    { "pattern": "build40for40.com/joyo/*", "zone_name": "build40for40.com" }
+  ],
+  "workers_dev": true,
+  "preview_urls": true
+}

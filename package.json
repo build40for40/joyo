@@ -8,8 +8,10 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test": "vitest run",
-    "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "build-only": "rm -rf dist && vite build",
+    "type-check": "vue-tsc --build",
+    "wrangler": "env -u CLOUDFLARE_API_KEY -u CLOUDFLARE_EMAIL wrangler --profile 40for40",
+    "deploy": "npm run build && npm run wrangler -- deploy"
   },
   "dependencies": {
     "vue": "^3.5.42"
@@ -27,7 +29,8 @@
     "vite": "^8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vitest": "^4.1.11",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "^3.3.11",
+    "wrangler": "^4.156.1"
   },
   "engines": {
     "node": "^22.18.0 || >=24.12.0"
