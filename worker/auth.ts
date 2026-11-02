@@ -1,19 +1,17 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 
-import { workosApiHostname } from '../src/onboarding/workos'
-
 const keySets = new Map<string, JWTVerifyGetKey>()
 
 export function workosKeys(clientId: string) {
   let keys = keySets.get(clientId)
   if (!keys) {
-    keys = createRemoteJWKSet(new URL(`https://${workosApiHostname(clientId)}/sso/jwks/${clientId}`))
+    keys = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
     keySets.set(clientId, keys)
   }
   return keys
 }
 
-export const workosIssuer = (clientId: string) => `https://${workosApiHostname(clientId)}/user_management/${clientId}`
+export const workosIssuer = (clientId: string) => `https://api.workos.com/user_management/${clientId}`
 
 /** The signed-in user's WorkOS id, or null when the request has no valid access token. */
 export async function authenticate(request: Request, keys: JWTVerifyGetKey, issuer: string) {
