@@ -3,7 +3,7 @@ import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai'
 
 import { finalTurnSchema, historySchema, turnSchema } from '../src/onboarding/schema'
 import { workosClientId } from '../src/onboarding/workos'
-import { authenticate, workosKeys } from './auth'
+import { authenticate, workosIssuer, workosKeys } from './auth'
 import { isLastTurn, LAST_TURN_INSTRUCTION, toModelMessages } from './messages'
 import onboardingPrompt from './onboarding-prompt.md'
 import { resultKey, saveResult } from './results'
@@ -11,6 +11,8 @@ import { resultKey, saveResult } from './results'
 interface Env {
   RESULTS: KVNamespace
   ANTHROPIC_API_KEY: string
+  /** Set in .dev.vars, because wrangler dev shows the Worker the production hostname. */
+  WORKOS_CLIENT_ID?: string
 }
 
 const API = '/joyo/api/onboarding'
@@ -20,7 +22,8 @@ const MAX_BODY_LENGTH = 64_000
 export default {
   async fetch(request, env, ctx) {
     const { hostname, pathname } = new URL(request.url)
-    const userId = await authenticate(request, workosKeys(workosClientId(hostname)))
+    const clientId = env.WORKOS_CLIENT_ID || workosClientId(hostname)
+    const userId = await authenticate(request, workosKeys(clientId), workosIssuer(clientId))
     if (!userId) return new Response('Sign in to continue.', { status: 401 })
 
     if (request.method === 'POST' && pathname === `${API}/next`) return next(request, env, ctx, userId)

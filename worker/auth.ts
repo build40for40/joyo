@@ -1,8 +1,5 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 
-// The WorkOS docs show the issuer both with and without a trailing slash.
-const WORKOS_ISSUERS = ['https://api.workos.com', 'https://api.workos.com/']
-
 const keySets = new Map<string, JWTVerifyGetKey>()
 
 export function workosKeys(clientId: string) {
@@ -14,13 +11,15 @@ export function workosKeys(clientId: string) {
   return keys
 }
 
+export const workosIssuer = (clientId: string) => `https://api.workos.com/user_management/${clientId}`
+
 /** The signed-in user's WorkOS id, or null when the request has no valid access token. */
-export async function authenticate(request: Request, keys: JWTVerifyGetKey) {
+export async function authenticate(request: Request, keys: JWTVerifyGetKey, issuer: string) {
   const token = request.headers.get('Authorization')?.match(/^Bearer (\S+)$/)?.[1]
   if (!token) return null
 
   try {
-    const { payload } = await jwtVerify(token, keys, { issuer: WORKOS_ISSUERS })
+    const { payload } = await jwtVerify(token, keys, { issuer })
     return payload.sub ?? null
   } catch {
     return null
