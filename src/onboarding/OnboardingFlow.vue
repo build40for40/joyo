@@ -9,6 +9,8 @@ import EstimateResult from './EstimateResult.vue'
 import QuestionStep from './QuestionStep.vue'
 import { turnSchema, type Birth, type OnboardingResult } from './schema'
 
+const emit = defineEmits<{ ready: [result: OnboardingResult] }>()
+
 const draft = ref<Draft | null>(loadDraft())
 const result = ref<OnboardingResult | null>(null)
 const signedIn = ref(false)
@@ -54,6 +56,8 @@ async function load() {
   try {
     signedIn.value = await isSignedIn()
     if (signedIn.value && !draft.value) result.value = await fetchResult()
+    // A returning user with a saved estimate goes straight to their Season Wheel.
+    if (result.value) emit('ready', result.value)
     if (signedIn.value && draft.value && !pending.value) requestNext()
   } catch (cause) {
     loadError.value = cause instanceof Error ? cause.message : 'Something went wrong loading Joyo.'
@@ -114,7 +118,12 @@ onMounted(load)
       <button type="button" @click="load">Try again</button>
     </div>
 
-    <EstimateResult v-else-if="result && !draft" :estimate="result.estimate" @restart="restart" />
+    <EstimateResult
+      v-else-if="result && !draft"
+      :estimate="result.estimate"
+      @open="emit('ready', result)"
+      @restart="restart"
+    />
 
     <QuestionStep
       v-else-if="pending"
