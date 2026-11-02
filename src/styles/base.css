@@ -1,0 +1,90 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--joyo-night);
+  color: var(--joyo-ivory);
+}
+
+body {
+  font-family: var(--joyo-font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+h1 {
+  font-family: var(--joyo-font-display);
+  font-size: 40px;
+  line-height: 1.15;
+}
+
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+p {
+  max-width: 65ch;
+}
+
+small {
+  font-size: 14px;
+  color: var(--joyo-lavender);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--joyo-gold);
+}
+
+a:hover {
+  color: var(--joyo-gold-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--joyo-gold);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--joyo-gold-soft);
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
