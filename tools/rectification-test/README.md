@@ -9,6 +9,7 @@ The local dry run of `src/rectification/system-prompt.md` from 2 November 2026. 
 - `run_v2.py`: the updated rules (whole calendar day, evidence levels, insufficient result, whole-lagna scoring).
 - `seeds.py`: repeats each persona over 10 seeds.
 - `REPORT.md`: what the runs found and the prompt changes they led to.
+- `export_reference.py`: writes `worker/sky/reference.json`, the Swiss Ephemeris answers the TypeScript sky calculator in the Worker is tested against.
 
 ## Run it
 
@@ -18,6 +19,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python run.py        # writes results/<variant>/<persona>.md
 .venv/bin/python run_v2.py 10  # the updated rules, 10 seeds per persona
+.venv/bin/python export_reference.py  # refresh worker/sky/reference.json
 ```
 
 Only made-up personas belong here. Never commit a real person's birth details or life events.
