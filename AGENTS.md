@@ -14,6 +14,20 @@ A small web app for data input and visualisation. Shared project context, servic
 - `npm test`: unit tests.
 - `npm run build`: type-check with `vue-tsc`, then build to `dist/`.
 
+## Brand and UI
+
+Read [`docs/brand.md`](docs/brand.md) before building or styling any screen, including the onboarding. The short version:
+
+- **Mood:** a starry night sky with a mood ring glowing on it. Calm page, vibrant data. Action beats anxiety: Joyo answers "when is a good time to act?", never "what bad thing will happen?".
+- **Tokens only:** colours, fonts, radii, spacing and motion are `--joyo-*` variables in `src/styles/tokens.css`. Global element styles live in `src/styles/base.css`. Components use the variables and never hard-code hex values.
+- **Dark only:** night background with the `StarField` component. No light theme, white cards, whole-page gradients, glassmorphism or default browser form styles.
+- **Colour meaning:** gold is action (primary button, selected, focus), with one gold primary button per screen. The 8-step mood scale is for data only and never reorders. Indigo means resting, not bad. Never green, pure red, black, grey or white. Errors are soft coral text with an icon. No Pantone names or numbers.
+- **Type:** Marcellus for titles, questions and big readouts. Manrope for everything else (buttons 600). IBM Plex Mono with `tabular-nums` for times, ranges and confidence.
+- **Onboarding:** one question per screen in a centred card, not a chat. Sensitive questions (deaths, illness, divorce) are asked kindly and always offer "Skip this one".
+- **Wheel:** 12 fixed houses, house 1 at 9 o'clock running anticlockwise, only the sign ring rotates. Wedges blend through the mood scale, labels describe actions ("Let go", not "Loss"), houses 6 and 8 clamp to mid scale, and a Resting → Steady → Active legend is always shown.
+- **Copy:** plain, warm, short. No fear words ("bad", "danger", "malefic"). Results always say "This is a best fit to the events you gave, not a certainty."
+- **Accessibility:** 4.5:1 contrast, gold focus ring, never colour alone, respect `prefers-reduced-motion`, 44px tap targets, works at 375px with a 16px gutter.
+
 ## Hosting
 
 - A Cloudflare Worker named `joyo` serves `dist/` as static assets on the `build40for40.com/joyo` and `build40for40.com/joyo/*` routes. Those routes run before the site's Worker, which owns the rest of the domain.
