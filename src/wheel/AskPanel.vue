@@ -37,7 +37,8 @@ function ask() {
   }
   const question = matchQuestion(text)
   if (!question) {
-    hint.value = 'Joyo can answer about marriage, home, work, business, moving, children, study, money and health.'
+    hint.value =
+      'Joyo can answer about marriage, home, work, business, moving, children, study, money, big challenges and health.'
     return
   }
   hint.value = ''

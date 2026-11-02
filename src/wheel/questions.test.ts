@@ -12,6 +12,7 @@ describe('matchQuestion', () => {
     expect(matchQuestion('Should I change jobs?')?.key).toBe('career')
     expect(matchQuestion('Should I move abroad?')?.key).toBe('abroad')
     expect(matchQuestion('When should I plan my surgery?')?.key).toBe('health')
+    expect(matchQuestion('When should I run a marathon?')?.key).toBe('challenge')
     expect(matchQuestion('What colour is the sky?')).toBeUndefined()
   })
 

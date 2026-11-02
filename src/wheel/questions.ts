@@ -67,6 +67,15 @@ export const QUESTIONS = [
     words: /money|invest|sav|financ|wealth|stock|buy shares/i,
   },
   {
+    key: 'challenge',
+    label: 'Take on a challenge',
+    ask: 'When is a good time to take on a big challenge?',
+    // House 3 for courage and effort, 1 for body and energy, 6 for training and discipline.
+    houses: [3],
+    support: [1, 6],
+    words: /marathon|race|running|\brun\b|triathlon|ironman|compet|tournament|match|climb|trek|sport|challenge/i,
+  },
+  {
     key: 'health',
     label: 'Health',
     ask: 'When is a good time to focus on my health?',
