@@ -2,6 +2,20 @@ import type { ModelMessage } from 'ai'
 
 import { MAX_QUESTIONS, type History } from '../src/onboarding/schema'
 
+const TIME_OF_DAY: Record<History['birth']['timeOfDay'], string> = {
+  morning: 'Morning',
+  afternoon: 'Afternoon',
+  evening: 'Evening',
+  night: 'Night',
+  unknown: 'No idea',
+}
+
+const SURENESS: Record<History['birth']['sureness'], string> = {
+  sure: 'Sure',
+  fairly_sure: 'Fairly sure',
+  not_sure: 'Not sure',
+}
+
 export const LAST_TURN_INSTRUCTION =
   'You have asked as many questions as onboarding allows. Give the estimate now, with question set to null.'
 
@@ -16,6 +30,8 @@ export function toModelMessages({ birth, steps }: History): ModelMessage[] {
       content: [
         `Date of birth: ${birth.date}`,
         `Place of birth: ${birth.place}`,
+        `Time of day I've been told: ${TIME_OF_DAY[birth.timeOfDay]}`,
+        `How sure that is: ${SURENESS[birth.sureness]}`,
         `What I know about the time: ${birth.notes || 'Nothing.'}`,
       ].join('\n'),
     },

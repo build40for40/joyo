@@ -3,9 +3,15 @@ import { z } from 'zod'
 export const MAX_QUESTIONS = 12
 export const MAX_ANSWER_LENGTH = 2000
 
+export const TIMES_OF_DAY = ['morning', 'afternoon', 'evening', 'night', 'unknown'] as const
+export const SURENESS = ['sure', 'fairly_sure', 'not_sure'] as const
+
 export const birthSchema = z.object({
   date: z.iso.date(),
   place: z.string().trim().min(1).max(200),
+  /** A family memory of the time is a soft hint for the rectification, never a search limit. */
+  timeOfDay: z.enum(TIMES_OF_DAY).default('unknown'),
+  sureness: z.enum(SURENESS).default('not_sure'),
   notes: z.string().trim().max(MAX_ANSWER_LENGTH),
 })
 
@@ -22,9 +28,17 @@ export const questionSchema = z.object({
 })
 
 export const eventSchema = z.object({
-  type: z.string().describe('What happened, e.g. marriage, first job, move abroad, father died.'),
+  type: z
+    .string()
+    .describe('What happened, e.g. marriage, first job, job ended, move abroad, father died. A start and an end are two events.'),
+  about: z
+    .enum(['self', 'father', 'mother', 'sibling', 'grandparent', 'other'])
+    .describe('Whose event it is. Cousins, aunts, uncles and friends are other.'),
   date: z.string().describe('As precise as the user gave it: YYYY-MM-DD, YYYY-MM or YYYY.'),
   precision: z.enum(['exact', 'month', 'season', 'year']),
+  confidence: z
+    .enum(['high', 'medium', 'low'])
+    .describe('Medium when the user hedged ("I think", "around"). Low for events about other.'),
   notes: z.string(),
 })
 

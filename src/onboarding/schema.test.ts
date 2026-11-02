@@ -11,6 +11,15 @@ describe('historySchema', () => {
     expect(historySchema.safeParse(history).success).toBe(true)
   })
 
+  it('treats missing time-of-day fields as no idea, not sure', () => {
+    const parsed = historySchema.parse({ birth, steps: [] })
+    expect(parsed.birth).toMatchObject({ timeOfDay: 'unknown', sureness: 'not_sure' })
+  })
+
+  it('rejects a time of day outside the chips', () => {
+    expect(historySchema.safeParse({ birth: { ...birth, timeOfDay: 'teatime' }, steps: [] }).success).toBe(false)
+  })
+
   it('rejects bad dates, unanswered steps, oversized answers and too many steps', () => {
     const rejected = [
       { birth: { ...birth, date: '12/04/1990' }, steps: [] },

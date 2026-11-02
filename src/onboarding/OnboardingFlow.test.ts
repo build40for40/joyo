@@ -5,12 +5,12 @@ import type { Draft } from './api'
 import OnboardingFlow from './OnboardingFlow.vue'
 import type { OnboardingResult } from './schema'
 
-const auth = vi.hoisted(() => ({ user: null as object | null }))
+const auth = vi.hoisted(() => ({ user: null as object | null, signIn: vi.fn() }))
 vi.mock('./auth', () => ({
-  getAuth: async () => ({ getUser: () => auth.user, getAccessToken: async () => 'token', signIn: vi.fn() }),
+  getAuth: async () => ({ getUser: () => auth.user, getAccessToken: async () => 'token', signIn: auth.signIn }),
 }))
 
-const birth = { date: '1990-04-12', place: 'Testville, Exampleland', notes: '' }
+const birth = { date: '1990-04-12', place: 'Testville, Exampleland', timeOfDay: 'unknown' as const, sureness: 'not_sure' as const, notes: '' }
 
 function setUp({ signedIn, draft, result }: { signedIn: boolean; draft?: Draft; result?: OnboardingResult }) {
   auth.user = signedIn ? { id: 'user_test' } : null
@@ -37,10 +37,38 @@ afterEach(() => {
 })
 
 describe('OnboardingFlow', () => {
-  it('opens with the hardcoded birth question, before sign-in', async () => {
+  it('opens on a choice between starting new and signing in', async () => {
     setUp({ signedIn: false })
     const wrapper = await mountFlow()
+    expect(wrapper.text()).toContain('Starting new')
+    expect(wrapper.text()).toContain('I have an account')
+    expect(wrapper.text()).not.toContain('When and where were you born?')
+  })
+
+  it('goes to the hardcoded birth question when starting new, before sign-in', async () => {
+    setUp({ signedIn: false })
+    const wrapper = await mountFlow()
+    await wrapper.findAll('button').find((button) => button.text() === 'Starting new')!.trigger('click')
     expect(wrapper.text()).toContain('When and where were you born?')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('signs in when the visitor already has an account', async () => {
+    setUp({ signedIn: false })
+    auth.signIn.mockClear()
+    const wrapper = await mountFlow()
+    await wrapper.findAll('button').find((button) => button.text() === 'I have an account')!.trigger('click')
+    await flushPromises()
+    expect(auth.signIn).toHaveBeenCalledOnce()
+  })
+
+  it('asks how sure the family is only once a time of day is picked', async () => {
+    setUp({ signedIn: false })
+    const wrapper = await mountFlow()
+    await wrapper.findAll('button').find((button) => button.text() === 'Starting new')!.trigger('click')
+    expect(wrapper.text()).not.toContain('How sure are they?')
+    await wrapper.findAll('button').find((button) => button.text() === 'Evening')!.trigger('click')
+    expect(wrapper.text()).toContain('How sure are they?')
   })
 
   it('asks a signed-out visitor to sign in once the birth details are in', async () => {

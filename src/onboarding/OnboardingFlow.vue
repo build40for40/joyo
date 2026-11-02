@@ -8,10 +8,13 @@ import BirthStep from './BirthStep.vue'
 import EstimateResult from './EstimateResult.vue'
 import QuestionStep from './QuestionStep.vue'
 import { turnSchema, type Birth, type OnboardingResult } from './schema'
+import SplashStep from './SplashStep.vue'
 
 const draft = ref<Draft | null>(loadDraft())
 const result = ref<OnboardingResult | null>(null)
 const signedIn = ref(false)
+/** Signed-out visitors choose between starting new and signing in to their saved estimate. */
+const startingNew = ref(false)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 const signInError = ref<string | null>(null)
@@ -99,6 +102,7 @@ function answer(value: string | null) {
 
 function restart() {
   result.value = null
+  startingNew.value = true
   setDraft(null)
 }
 
@@ -142,6 +146,8 @@ onMounted(load)
       <button type="button" @click="requestNext">Try again</button>
     </div>
 
+    <SplashStep v-else-if="!signedIn && !startingNew" :error="signInError" @start="startingNew = true" @sign-in="signIn" />
+
     <BirthStep v-else @submit="start" />
   </div>
 </template>
@@ -151,67 +157,186 @@ onMounted(load)
 .onboarding .status {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--joyo-space-4);
+}
+
+.onboarding .step {
+  background: var(--joyo-surface);
+  border: 1px solid var(--joyo-line);
+  border-radius: var(--joyo-radius-card);
+  padding: var(--joyo-space-6);
+  animation: joyo-step-in var(--joyo-dur) var(--joyo-ease);
+}
+
+@keyframes joyo-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 .onboarding h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.3;
+  font-family: var(--joyo-font-display);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.25;
 }
 
-.onboarding label {
+.onboarding p {
+  margin: 0;
+}
+
+.onboarding label,
+.onboarding fieldset {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-weight: 600;
+  gap: var(--joyo-space-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-weight: 500;
+}
+
+.onboarding legend {
+  padding: 0;
+  margin-bottom: var(--joyo-space-2);
+  font-weight: 500;
 }
 
 .onboarding input,
-.onboarding textarea,
-.onboarding button {
-  font: inherit;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid #c8c8d0;
+.onboarding textarea {
   max-width: 100%;
-  box-sizing: border-box;
+  padding: 14px;
+  background: var(--joyo-surface-2);
+  border: 1px solid var(--joyo-line);
+  border-radius: var(--joyo-radius-input);
+}
+
+.onboarding input::placeholder,
+.onboarding textarea::placeholder {
+  color: var(--joyo-lavender);
+}
+
+.onboarding input:focus,
+.onboarding textarea:focus {
+  outline: none;
+  border-color: var(--joyo-gold);
+  box-shadow: 0 0 0 3px var(--joyo-gold-soft);
 }
 
 .onboarding button {
-  cursor: pointer;
-  background: #2f2a6b;
-  color: #fff;
+  min-height: 44px;
+  padding: 12px 22px;
+  border-radius: var(--joyo-radius-pill);
   border: none;
+  background: var(--joyo-gold);
+  color: var(--joyo-on-gold);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 18px var(--joyo-gold-soft);
+  transition: background var(--joyo-dur-fast) var(--joyo-ease);
 }
 
+.onboarding button:hover {
+  background: var(--joyo-gold-hover);
+}
+
+.onboarding .secondary,
+.onboarding .options button,
+.onboarding .chip {
+  background: transparent;
+  color: var(--joyo-lavender);
+  border: 1px solid var(--joyo-line);
+  box-shadow: none;
+}
+
+.onboarding .secondary:hover,
+.onboarding .options button:hover,
+.onboarding .chip:hover {
+  background: transparent;
+  color: var(--joyo-gold);
+  border-color: var(--joyo-gold);
+}
+
+.onboarding .actions,
 .onboarding .options {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--joyo-space-3);
 }
 
 .onboarding .options button {
-  background: #fff;
-  color: #2f2a6b;
-  border: 1px solid #2f2a6b;
+  background: var(--joyo-surface-2);
+  color: var(--joyo-ivory);
+  border-radius: var(--joyo-radius-input);
   text-align: left;
 }
 
+.onboarding .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--joyo-space-2);
+}
+
+.onboarding .chip {
+  min-height: 44px;
+  padding: 8px 16px;
+  background: var(--joyo-surface-2);
+  color: var(--joyo-ivory);
+  font-weight: 500;
+}
+
+.onboarding .chip[aria-pressed='true'] {
+  background: var(--joyo-gold-soft);
+  border-color: var(--joyo-gold);
+  color: var(--joyo-gold);
+}
+
 .onboarding .skip {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
   background: none;
-  color: #5a5a66;
+  box-shadow: none;
+  color: var(--joyo-lavender);
+  font-weight: 500;
   text-decoration: underline;
+}
+
+.onboarding .skip:hover {
+  background: none;
+  color: var(--joyo-gold);
 }
 
 .onboarding .count,
 .onboarding .hint {
-  margin: 0;
-  color: #5a5a66;
+  color: var(--joyo-lavender);
+}
+
+.onboarding .count {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.onboarding .error {
+  color: var(--joyo-error);
 }
 
 .onboarding .preview {
-  font-size: 1.5rem;
+  font-family: var(--joyo-font-display);
+  font-size: 28px;
   opacity: 0.6;
+}
+
+@media (max-width: 480px) {
+  .onboarding .step {
+    padding: 20px;
+  }
+
+  .onboarding h2,
+  .onboarding .preview {
+    font-size: 22px;
+  }
 }
 </style>
