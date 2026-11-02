@@ -36,12 +36,13 @@ describe('parseMilestone', () => {
 })
 
 describe('milestonesFrom', () => {
-  it('turns onboarding events into days since birth, dropping ones it cannot place', () => {
+  it('turns your own onboarding events into days since birth, dropping ones it cannot place', () => {
     const events = [
-      { type: 'marriage', date: '2015-06', precision: 'month' as const, notes: '' },
-      { type: 'first job', date: 'unknown', precision: 'year' as const, notes: '' },
-    ]
-    expect(milestonesFrom(events, '1990-01-01')).toEqual([{ name: 'Marriage', t: 9296, house: 7 }])
+      { type: 'marriage', about: 'self', date: '2015-06', precision: 'month', confidence: 'high', notes: '' },
+      { type: 'first job', about: 'self', date: 'unknown', precision: 'year', confidence: 'high', notes: '' },
+      { type: 'father retired', about: 'father', date: '2012', precision: 'year', confidence: 'low', notes: '' },
+    ] as const
+    expect(milestonesFrom([...events], '1990-01-01')).toEqual([{ name: 'Marriage', t: 9296, house: 7 }])
   })
 })
 

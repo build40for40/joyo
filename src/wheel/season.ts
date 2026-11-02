@@ -66,10 +66,14 @@ export function eventMs(date: string): number | null {
   return Date.UTC(Number(year), +month - 1, day ? +day : 15)
 }
 
-/** Onboarding events as milestones, measured from the birth date. Events before it are left out. */
+/**
+ * The user's own onboarding events as milestones, measured from the birth date.
+ * Family events and events before birth are left out.
+ */
 export function milestonesFrom(events: Estimate['events'], birthDate: string): Milestone[] {
   const birth = birthMs(birthDate)
   return events.flatMap((event) => {
+    if (event.about !== 'self') return []
     const at = eventMs(event.date)
     if (at === null || at < birth) return []
     return [{ name: capitalise(event.type), t: Math.round((at - birth) / DAY_MS), house: houseFor(event.type) }]
