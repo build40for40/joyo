@@ -79,20 +79,28 @@ function tropicalLongitude(graha: Graha, time: AstroTime) {
   return Ecliptic(GeoVector(BODIES[graha]!, time, true)).elon
 }
 
-/** Sidereal longitudes of the nine grahas. */
+/**
+ * Sidereal longitudes of the nine grahas. As in Swiss Ephemeris, nutation is taken out: the ayanamsa
+ * is a mean value, so true positions of date would otherwise carry up to 17″ of nutation into every
+ * sign, and the Moon's share alone moves Vimshottari dates by days.
+ */
 export function grahaLongitudes(utcMs: number): Record<Graha, number> {
   const time = MakeTime(new Date(utcMs))
   const ayan = ayanamsa(time)
-  return Object.fromEntries(GRAHAS.map((graha) => [graha, norm(tropicalLongitude(graha, time) - ayan)])) as Record<Graha, number>
+  const nutation = e_tilt(time).dpsi / 3600
+  return Object.fromEntries(
+    GRAHAS.map((graha) => [graha, norm(tropicalLongitude(graha, time) - (graha === 'Rahu' || graha === 'Ketu' ? 0 : nutation) - ayan)]),
+  ) as Record<Graha, number>
 }
 
-/** Sidereal longitude of the ascendant (lagna). */
+/** Sidereal longitude of the ascendant (lagna), with nutation taken out as for the grahas. */
 export function ascendant(utcMs: number, place: Place) {
   const time = MakeTime(new Date(utcMs))
+  const tilt = e_tilt(time)
   const ramc = rad(norm(SiderealTime(time) * 15 + place.lon))
-  const obliquity = rad(e_tilt(time).tobl)
+  const obliquity = rad(tilt.tobl)
   const tropical = deg(Math.atan2(Math.cos(ramc), -(Math.sin(ramc) * Math.cos(obliquity) + Math.tan(rad(place.lat)) * Math.sin(obliquity))))
-  return norm(tropical - ayanamsa(time))
+  return norm(tropical - tilt.dpsi / 3600 - ayanamsa(time))
 }
 
 /** The Parashari varga rashi (0 = Mesha) for a sidereal longitude. */
@@ -125,8 +133,11 @@ export interface Chart {
 }
 
 export function computeChart(utcMs: number, place: Place): Chart {
-  const asc = ascendant(utcMs, place)
-  const longitudes = grahaLongitudes(utcMs)
+  return chartFrom(utcMs, ascendant(utcMs, place), grahaLongitudes(utcMs))
+}
+
+/** A chart from positions already worked out, so a day scan can reuse them. */
+export function chartFrom(utcMs: number, asc: number, longitudes: Record<Graha, number>): Chart {
   const lagna = Object.fromEntries(VARGAS.map((d) => [d, vargaSign(asc, d)])) as Record<Varga, number>
   const signs = Object.fromEntries(
     VARGAS.map((d) => [d, Object.fromEntries(GRAHAS.map((g) => [g, vargaSign(longitudes[g], d)]))]),

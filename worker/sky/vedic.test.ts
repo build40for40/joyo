@@ -26,8 +26,8 @@ import {
  */
 
 const DAY = 86_400_000
-const LONGITUDE = 0.01 // degrees: 36 arcseconds
-const ASCENDANT = 0.02 // degrees: about 5 seconds of time
+const LONGITUDE = 0.002 // degrees: 7 arcseconds
+const ASCENDANT = 0.001 // degrees: under a second of time
 const SPAN_START = 75_000 // the reference scans whole minutes, so its boundary is up to a minute late
 const SUN_EVENT = 90_000
 
