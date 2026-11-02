@@ -147,6 +147,8 @@ function add() {
   flash.value++
 }
 
+defineExpose({ editBirth: () => birthCard.value?.edit() })
+
 function setRecord(next: BirthRecord | null) {
   record.value = next
   saveBirthRecord(props.result.completedAt, next)

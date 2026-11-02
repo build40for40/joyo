@@ -14,6 +14,10 @@ const fakeClient = {
     sessionStorage.setItem(FAKE_SIGNED_IN, 'true')
     window.location.reload()
   },
+  signOut: () => {
+    sessionStorage.removeItem(FAKE_SIGNED_IN)
+    window.location.reload()
+  },
 }
 
 export function getAuth() {
