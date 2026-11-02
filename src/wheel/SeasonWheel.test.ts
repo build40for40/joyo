@@ -40,7 +40,8 @@ const mountWheel = () => mount(SeasonWheel, { props: { result, now: new Date('20
 describe('SeasonWheel', () => {
   it('shows the birth details, the estimate and the milestones from onboarding', () => {
     const wrapper = mountWheel()
-    expect(wrapper.find('.person').text()).toContain('Born 12 Apr 1990 · Testville · 07:30–09:30 (estimated)')
+    expect(wrapper.find('.person').text()).toContain('Born 12 Apr 1990 · Testville')
+    expect(wrapper.find('.person').text()).toContain('07:30–09:30 (estimated)')
     expect(wrapper.find('.birth').text()).toContain('12 Apr 199007:30–09:30')
     expect(wrapper.find('.birth').text()).toContain('Estimated from your milestones · medium confidence')
     expect(wrapper.find('.birth').text()).toContain('not a certainty')
@@ -92,7 +93,8 @@ describe('SeasonWheel', () => {
     await wrapper.findAll('.birth .chip')[0]!.trigger('click')
     await wrapper.find('.birth form').trigger('submit')
 
-    expect(wrapper.find('.person').text()).toContain('Born 11 Apr 1990 · Testville · 05:50 (birth certificate)')
+    expect(wrapper.find('.person').text()).toContain('Born 11 Apr 1990 · Testville')
+    expect(wrapper.find('.person').text()).toContain('05:50 (birth certificate)')
     expect(wrapper.find('.birth').text()).toContain('From your birth certificate')
     expect(wrapper.find('.birth').text()).toContain('Your milestones pointed to 07:30–09:30')
     expect(wrapper.find('.birth').text()).not.toContain('not a certainty')
@@ -151,5 +153,14 @@ describe('SeasonWheel', () => {
     await wrapper.find('.today-link').trigger('click')
     expect(wrapper.find('.date').text()).toBe('2 Nov 2026')
     expect(wrapper.find('.today-link').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('opens the birth form from the link at the top', async () => {
+    const wrapper = mountWheel()
+    expect(wrapper.find('.birth form').exists()).toBe(false)
+    await wrapper.find('.update-birth').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.birth form').exists()).toBe(true)
+    expect((wrapper.find('.birth input[type="date"]').element as HTMLInputElement).value).toBe('1990-04-12')
   })
 })

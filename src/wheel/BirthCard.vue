@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 
 import type { Estimate } from '@/onboarding/schema'
 import { outsideWindow, RECORD_SOURCES, type BirthRecord, type RecordSource } from './birth'
@@ -20,6 +20,20 @@ const formTime = ref('')
 const source = ref<RecordSource | null>(null)
 const error = ref('')
 const today = new Date().toISOString().slice(0, 10)
+
+const root = ref<HTMLElement>()
+const dateInput = ref<HTMLInputElement>()
+
+/** Opens the form, brings it into view and puts the cursor in the date. */
+async function edit() {
+  open()
+  await nextTick()
+  const smooth = typeof matchMedia === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches
+  root.value?.scrollIntoView?.({ behavior: smooth ? 'smooth' : 'auto', block: 'center' })
+  dateInput.value?.focus({ preventScroll: true })
+}
+
+defineExpose({ edit })
 
 function open() {
   formDate.value = props.record?.date ?? props.date
@@ -44,7 +58,7 @@ function useEstimate() {
 </script>
 
 <template>
-  <section class="birth" aria-labelledby="birth-heading">
+  <section ref="root" class="birth" aria-labelledby="birth-heading">
     <div class="head">
       <h3 id="birth-heading" class="label">Your birth</h3>
       <button v-if="!editing" type="button" class="link" @click="open">
@@ -74,7 +88,7 @@ function useEstimate() {
       <div class="fields">
         <label>
           <span class="label">Date</span>
-          <input v-model="formDate" type="date" class="field mono" :max="today" />
+          <input ref="dateInput" v-model="formDate" type="date" class="field mono" :max="today" />
         </label>
         <label>
           <span class="label">Time it says</span>

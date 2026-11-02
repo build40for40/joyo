@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import type { OnboardingResult } from '@/onboarding/schema'
 import { loadBirthRecord, RECORD_SOURCES, saveBirthRecord, type BirthRecord } from './birth'
@@ -31,6 +31,7 @@ const SPEEDS = { life: [2, 5, 10], ahead: [0.5, 1, 2] }
 const AHEAD_YEARS = 5
 
 const { estimate } = props.result
+const birthCard = useTemplateRef<InstanceType<typeof BirthCard>>('birthCard')
 
 // A birth time found written down replaces the estimate, and everything is measured from it.
 const record = ref<BirthRecord | null>(loadBirthRecord(props.result.completedAt))
@@ -146,6 +147,8 @@ function add() {
   flash.value++
 }
 
+defineExpose({ editBirth: () => birthCard.value?.edit() })
+
 function setRecord(next: BirthRecord | null) {
   record.value = next
   saveBirthRecord(props.result.completedAt, next)
@@ -191,13 +194,12 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
   <div class="season">
     <header>
       <h1>Season Wheel</h1>
-      <p class="person">
-        Born <b>{{ formatDay(birth) }}</b> · <b>{{ place }}</b> ·
-        <template v-if="record">
-          <b class="mono">{{ record.time }}</b> ({{ RECORD_SOURCES[record.source] }})
-        </template>
-        <template v-else><b class="mono">{{ estimate.earliest }}–{{ estimate.latest }}</b> (estimated)</template>
-      </p>
+      <div class="person">
+        <p>Born <b>{{ formatDay(birth) }}</b> · <b>{{ place }}</b></p>
+        <p v-if="record"><b class="mono">{{ record.time }}</b> ({{ RECORD_SOURCES[record.source] }})</p>
+        <p v-else><b class="mono">{{ estimate.earliest }}–{{ estimate.latest }}</b> (estimated)</p>
+        <button type="button" class="update-birth" @click="birthCard?.edit()">Update my birthday or time?</button>
+      </div>
     </header>
 
     <div class="main">
@@ -364,6 +366,7 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
         </div>
 
         <BirthCard
+          ref="birthCard"
           :date="result.birth.date"
           :estimate="estimate"
           :record="record"
@@ -389,15 +392,50 @@ const sortedMilestones = computed(() => [...milestones.value].sort((a, b) => b.t
 header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--joyo-space-2) var(--joyo-space-5);
 }
 
+/* Date and place, then the time, then the link, stacked and right-aligned beside the title. */
 .person {
-  margin: 0;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
   font-size: 14px;
   color: var(--joyo-lavender);
+  text-align: right;
+}
+
+.person p {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .person {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+.update-birth {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--joyo-lavender);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--joyo-line);
+  text-underline-offset: 3px;
+}
+
+.update-birth:hover {
+  border: 0;
+  color: var(--joyo-gold);
+  text-decoration-color: var(--joyo-gold);
 }
 
 .person b {
